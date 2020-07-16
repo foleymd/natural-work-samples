@@ -1,0 +1,1737 @@
+**% outputs data from SIS en route to CRM
+**%********************************************************************
+**%       SOFTWARE (C) 2018 THE UNIVERSITY OF TEXAS AT AUSTIN.        *
+**%                       ALL RIGHTS RESERVED.                        *
+***********************************************************************
+**             R E M A R K S    S E C T I O N
+** --------------------------------------------------------------------
+**      PROGRAM NAME:  UTPB2CRM
+**            AUTHOR:  Marjorie Foley
+**      DATE WRITTEN:  April 2018
+**           PURPOSE:  Reads & translates contact data to send to CRM 
+**                     (Salesforce) & writes it to 6 work files.
+**
+**         REVISIONS: 07/15/2020 - scrubbed for public presentation
+**
+**
+** ------------------------------------------------------------------ *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* ------------------------------------------------------------------- *
+DEFINE DATA
+*
+LOCAL USING UTDPELKP  /* Given EID return UIN
+LOCAL USING UTDP0002  /* get Registrar student record
+LOCAL USING UTDPCODE  /* translate Registrar/Admissions codes
+LOCAL USING UTDPBARS  /* get academic and financial bars
+LOCAL USING UTDPEMAD  /* validate email addresses
+*
+LOCAL
+*
+1 STUDENT VIEW OF PERSON-FILE
+  2 ACAD-TYPE
+  2 REC-TYPE
+  2 SID
+  2 UIN
+  2 FIRST-NAME-MIXED
+  2 MIDDLE-NAME-MIXED
+  2 LAST-NAME-MIXED
+  2 PIN
+  2 NAME-UPPERCASE
+  2 BIRTHDATE
+  2 GENDER
+  2 HIGHEST-DEGREE
+  2 ETHNICITY
+  2 COMMENTS                         (1:10)
+  2 CITIZENSHIP
+  2 LAST-UPDATE-USERID
+  2 LAST-UPDATE-DATE
+  2 PROG-DEPT                        (1:30)
+  2 ROLE                             (1:30)
+  2 JOB-TITLE                        (1:30)
+  2 EMPLOYER-ID                      (1:30)
+  2 ADDRESS-PREF                     (1:30)
+  2 PHONE-PREF                       (1:30)
+  2 EMAIL                            (1:30)
+  2 DO-NOT-MAIL                      (1:30)
+  2 FIRST-LEAD-ID                    (1:30)
+  2 LATEST-LEAD-ID                   (1:30)
+  2 PARENT-FIRST-LEAD-ID             (1:30)
+  2 PARENT-LATEST-LEAD-ID            (1:30)
+  2 DP-COMMENTS                      (1:30,1:10)
+  2 ADDR-DEPT                        (1:20)
+  2 ADDR-1                           (1:20)
+  2 ADDR-2                           (1:20)
+  2 CITY                             (1:20)
+  2 STATE                            (1:20)
+  2 ZIP                              (1:20)
+  2 COUNTRY                          (1:20)
+  2 ADDR-CODE                        (1:20)
+  2 ADDR-LAST-UPDATE                 (1:20)
+  2 ADDR-LAST-USERID                 (1:20)
+  2 EXTRA-ADDR-DEPT                  (1:20)
+  2 ADDR-0                           (1:20)
+  2 ADDR-3                           (1:20)
+  2 ADDR-4                           (1:20)
+  2 PHONE-DEPT                       (1:20)
+  2 HOME-PHONE                       (1:20)
+  2 WORK-PHONE                       (1:20)
+  2 CELL-PHONE                       (1:20)
+  2 FAX                              (1:20)
+  2 OTHER-PHONE                      (1:20)
+  2 USER-PREF-PHONE                  (1:20)
+  2 PHONE-LAST-UPDATE                (1:20)
+  2 PHONE-LAST-USERID                (1:20)
+  2 SUFFIX
+  2 YOB-RANGE
+*
+1 EMPLOYER VIEW OF PERSON-FILE
+*
+1 TEXT-ONLINE VIEW OF COMMENTS-FILE
+  2 UNIT-CODE
+  2 REC-TYPE
+  2 SID
+  2 SEQ-NO
+  2 DATA                             (1:36)
+*
+1 #HOLD
+  2 ACAD-TYPE-SID                     (A11)
+  2 UNIQUE-ID                         (A15)
+  2 CONTACT-UNIQUE-ID                 (A15)
+  2 ACCOUNT-UNIQUE-ID                 (A15)
+  2 MASTER-UNIQUE-ID                  (A15)
+  2 ADDR-UNIQUE-ID                    (A20)
+  2 PROG-DEPT                         (A3)
+  2 SID                               (A9)
+  2 EID                               (A8)
+  2 NAME-UPPERCASE                    (A60)
+  2 FIRST-NAME                        (A15)
+  2 MIDDLE-NAME                       (A15)
+  2 LAST-NAME                         (A25)
+  2 SUFFIX                            (A5)
+  2 ACCOUNT-NAME                      (A60)
+  2 GENDER                            (A6)
+  2 ETHNICITY                         (A125)
+  2 CITIZENSHIP                       (A50)
+  2 HIGH-DEGREE                       (A25)
+  2 ROLE                              (A20)
+  2 CREATED-EID                       (A8)
+  2 LAST-UPDATE-USERID                (A8)
+  2 LAST-UPDATE-NAME                  (A50)
+  2 EMPLOYER-ID                       (A9)
+  2 ADDR-DEPT                         (A2)
+  2 ADDR-TYPE                         (A10)
+  2 EMAIL                             (A100)
+  2 DO-NOT-MAIL                       (A1)
+  2 ALL-ADDR-1                        (A140)
+  2 ALL-ADDR-2                        (A210)
+  2 ADDR-WITH-COMMA                   (A71)
+  2 CITY                              (A40)
+  2 STATE                             (A2)
+  2 ZIP                               (A11)
+  2 COUNTRY                           (A25)
+  2 ADDR-PREF                         (N2)
+  2 DEFAULT-ADDR                      (N1) INIT <0>
+  2 DEFAULT-ADDR-FOUND                (L)
+  2 ADDR-CODE                         (A1)
+  2 ADDR-LAST-UPDATE                  (A8)
+  2 ADDR-LAST-UPDATE-2                (A8)
+  2 ADDR-LAST-UPDATE-A6               (A6)
+  2 REDEFINE ADDR-LAST-UPDATE-A6
+    3 ADDR-LAST-UPDATE-A6-MM          (A2)
+    3 ADDR-LAST-UPDATE-A6-DD          (A2)
+    3 ADDR-LAST-UPDATE-A6-YY          (A2)
+  2 ADDR-LAST-UPDATE-A8               (A8)
+  2 REDEFINE ADDR-LAST-UPDATE-A8
+    3 ADDR-LAST-UPDATE-A8-CC          (A2)
+    3 ADDR-LAST-UPDATE-A8-YY          (A2)
+    3 ADDR-LAST-UPDATE-A8-MM          (A2)
+    3 REDEFINE ADDR-LAST-UPDATE-A8-MM
+      4 ADDR-LAST-UPDATE-A8-M1        (A1)
+      4 ADDR-LAST-UPDATE-A8-M2        (A1)
+    3 ADDR-LAST-UPDATE-A8-DD          (A2)
+  2 ADDR-LAST-USERID                  (A16)
+  2 ADDR-LAST-USERID-2                (A16)
+  2 ADDR-UPDATE-NAME                  (A50)
+  2 ADDR-UPDATE-NAME-2                (A50)
+  2 PHONE-DEPT                        (A2)
+  2 HOME-PHONE                        (A30)
+  2 WORK-PHONE                        (A30)
+  2 CELL-PHONE                        (A25)
+  2 FAX                               (A25)
+  2 OTHER-PHONE                       (A25)
+  2 PREFERRED-PHONE-NUMBER            (A25)
+  2 PREFERRED-PHONE-TYPE              (A10)
+  2 PHONE-LAST-UPDATE                 (A8)
+  2 PHONE-LAST-USERID                 (A8)
+  2 BAR-ADDED-USERID                  (A8)
+  2 BAR-WAIVED-USERID                 (A8)
+  2 BAR-ADDED-NAME                    (A50)
+  2 BAR-WAIVED-NAME                   (A50)
+  2 BAR-SOURCE                        (A8)
+  2 DISMISSAL                         (A150)
+  2 DISMISSAL-COLLEGE                 (A50)
+  2 DISMISSAL-START-CCYYS             (A15)
+  2 DISMISSAL-END-CCYYS               (A15)
+  2 DISMISSAL-WE-CARE                 (A25)
+  2 EMPL-SID                          (A9)
+  2 EMPL-ACAD-TYPE-SID                (A11)
+  2 EMPL-UNIQUE-ID                    (A20)
+  2 EMPLOYER-FOUND                    (L)
+  2 EMPL-ACCOUNT-NAME                 (A60)
+  2 ORPHAN-EMPLOYER-ID                (A10)
+  2 COMMENTS                          (A9500)
+  2 CETO-COMMENTS                     (A9500)
+  2 RECORD-TYPE                       (A22)
+*
+** Indexes, counters, and logicals
+*
+1 #I                   (I4)
+1 #J                   (I4)
+1 #K                   (I4)
+1 #L                   (I4)
+1 #M                   (I4)
+1 #N                   (I4)
+1 #RECS-READ           (I4)
+1 #RECS-WRITTEN        (I4)
+1 #RECS-ACCEPTED       (I4)
+1 #PD-CTR              (I4)
+1 #UE-CTR              (I4)
+1 #IC-CTR              (I4)
+1 #CG-CTR              (I4)
+1 #CG-PD-CTR           (I4)
+1 #PHONE-I             (N2)
+1 #ADDR-I              (N2)
+1 #HAS-PD              (L)
+1 #HAS-CG              (L)
+*
+** Work files
+*
+1 #WKFL-1              (A12000)  /* Contact
+1 #WKFL-2              (A5000)   /* Account
+1 #WKFL-3              (A2000)   /* Address
+1 #WKFL-4              (A100)    /* Affiliation
+1 #WKFL-5              (A2000)   /* Bars
+1 #WKFL-6              (A5000)   /* Master accounts
+1 #WKFL-DYNAMIC        (A) DYNAMIC      /* for variable length
+*
+** Race/ethnicity
+*
+1 #WHITE               (A5)  CONST<'White'>
+1 #BLACK               (A25) CONST<'Black or African American'>
+1 #ASIAN               (A5)  CONST<'Asian'>
+1 #HISPANIC            (A8)  CONST<'Hispanic'>
+1 #AMERICAN-INDIAN     (A32) CONST<'American Indian or Alaska Native'>
+*
+** Genders
+*
+1 #FEMALE              (A6) CONST<'Female'>
+1 #MALE				   (A4) CONST<'Male'>
+*
+** Machine and human-readable department abbreviations
+*
+1 #PD                  (A2) CONST <'PD'> 
+1 #CPE                 (A3) CONST <'CPE'>
+1 #IC                  (A2) CONST <'IC'>
+1 #CG                  (A2) CONST <'CG'>
+1 #UE                  (A2) CONST <'UE'>
+1 #UEX                 (A3) CONST <'UEX'>
+*
+** Search key
+*
+1 #SK-TEXT-ONLINE      (A13)
+*
+** Punctuation constants for data cleanup
+*
+1 #TAB                 (A5) CONST <','>
+1 #QUOTE               (A4) CONST <'"'>
+1 #SEMICOLON           (A4) CONST <';'>
+1 #HYPHEN              (A4) CONST <'-'>
+1 #COMMA               (A4) CONST <','>
+*
+END-DEFINE
+*
+***********************************************************************
+*               I N C L U D E    S E C T I O N
+* ------------------------------------------------------------------- *
+*
+INCLUDE TXCPERRJ
+*
+***********************************************************************
+*                M A I N   L O G I C   S E C T I O N
+* ------------------------------------------------------------------- *
+*
+PERFORM WRITE-HEADERS
+*       =============
+*
+READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
+*
+   RESET #UTDP0002
+         #HAS-PD
+         #HAS-CG
+*
+  ADD 1 TO #RECS-READ
+*
+  IF STUDENT.REC-TYPE  NE 'I'  /* 'I'ndividual
+  AND STUDENT.REC-TYPE NE 'C' /* 'C'ompany
+    ESCAPE TOP
+  END-IF
+*
+** We want UEX/UE, CPE/PD, CG/CGLS/Biz Dev, and IC records only
+** corresponding to 'A'cademic, 'N'on-academic & 'O'lli
+** ACAD-TYPEs
+*
+  IF STUDENT.ACAD-TYPE  NE 'A'   
+  AND STUDENT.ACAD-TYPE NE 'N'  
+  AND STUDENT.ACAD-TYPE NE 'O'   
+    ESCAPE TOP
+  END-IF
+*
+** Skip person records that don't have last names.
+*
+  IF STUDENT.REC-TYPE         EQ 'I'     
+  AND STUDENT.LAST-NAME-MIXED EQ ' ' 
+    ESCAPE TOP
+  END-IF
+*
+** Skip all other records that have no names.
+*
+  IF STUDENT.LAST-NAME-MIXED    EQ ' ' 
+  AND STUDENT.FIRST-NAME-MIXED  EQ ' '  
+  AND STUDENT.MIDDLE-NAME-MIXED EQ ' '
+  AND STUDENT.NAME-UPPERCASE    EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+** Mark records that are both PD and CG for 
+** later processing
+*
+  FOR #I FROM 1 TO 30              
+    IF STUDENT.PROG-DEPT(#I)  EQ #PD
+          MOVE TRUE               TO #HAS-PD 
+    END-IF                          
+     IF STUDENT.PROG-DEPT(#I) EQ #CG
+      MOVE TRUE               TO #HAS-CG
+    END-IF
+  END-FOR
+*
+  FOR #I FROM 1 TO 30                
+*
+** Escape top on records from non-core units
+*
+    IF STUDENT.PROG-DEPT(#I)  NE #UE     /* UEX
+    AND STUDENT.PROG-DEPT(#I) NE #PD     /* CPE
+    AND STUDENT.PROG-DEPT(#I) NE #IC     /* IC
+    AND STUDENT.PROG-DEPT(#I) NE #CG     /* Biz Dev/CGLS
+      ESCAPE TOP
+    END-IF
+*
+** For CG records, we only want instructors or contacts,
+** not students.
+*
+    IF STUDENT.PROG-DEPT(#I)  EQ 'CG' 
+    AND STUDENT.ROLE(#I)      EQ ' '      
+      ESCAPE TOP
+    END-IF
+*
+    ADD 1                     TO #RECS-ACCEPTED
+*
+    RESET #HOLD
+          #WKFL-1
+          #WKFL-2
+*
+**  Moving a user-friendly program department over
+*
+    IF STUDENT.PROG-DEPT(#I)   EQ #PD
+      MOVE #CPE                TO #HOLD.PROG-DEPT
+    END-IF
+*
+    IF STUDENT.PROG-DEPT(#I)   EQ #UE
+      MOVE #UEX                TO #HOLD.PROG-DEPT
+    END-IF
+*
+    IF STUDENT.PROG-DEPT(#I)   EQ #IC
+      MOVE #IC                 TO #HOLD.PROG-DEPT
+    END-IF
+*
+    IF STUDENT.PROG-DEPT(#I)   EQ #CG
+      MOVE #CG                 TO #HOLD.PROG-DEPT
+    END-IF
+*
+    PERFORM CREATE-UNIQUE-IDS    /* for Salesforce IDs
+*           =================
+*
+** Get EID from Registrar data when possible for 
+** all records.
+*
+    IF STUDENT.UIN NE ' '
+      PERFORM GET-EID
+*             =======
+    END-IF
+*
+** Get Registrar data for all UEX records. 
+*
+    IF STUDENT.PROG-DEPT(#I) EQ #UE
+*
+      PERFORM GET-STUDENT-RECORD
+*             ==================
+*
+      IF #UTDP0002.RETURN-CODE EQ ' '
+      AND STUDENT.ACAD-TYPE EQ 'A'
+      AND STUDENT.PROG-DEPT(#I) EQ #UE
+*
+        PERFORM TRANSLATE-ETHNICITY
+*               ===================
+        PERFORM TRANSLATE-HIGH-DEGREE
+*               =====================
+*
+      END-IF
+    END-IF
+*
+** For records that are people (not companies), clean
+** up data.
+*
+    IF STUDENT.REC-TYPE EQ 'I'
+      PERFORM PROCESS-NAME-FIELDS
+*             ===================
+    END-IF
+*
+** We must reject invalid emails to prevent Salesforce
+** processing errors. 
+*
+    PERFORM VALIDATE-EMAIL
+*           ==============
+*
+** Affiliations connect people with employers in Salesforce
+*
+    IF STUDENT.EMPLOYER-ID(#I) NE 0
+    AND STUDENT.REC-TYPE EQ 'I'
+*    
+      PERFORM WRITE-EMPLOYER-AFFILIATIONS
+*             ==================
+    END-IF
+*
+** Match up phone field types & clean data before output
+*
+    PERFORM MOVE-PHONE
+*           ==========
+*
+** Translate UIN to human-readable EID
+*
+    PERFORM TRANSLATE-LAST-UPDATE-USERID
+*           ============================
+*
+** Pull in full comments in addition to comments
+** directly on person record. 
+*
+    PERFORM GET-TEXT-ONLINE-COMMENTS
+*           ========================
+*
+    PERFORM PERFORM-FINAL-DATA-TRANSLATIONS
+*           =============================== 
+*   
+** Conditionally write person record to output based on 
+** record type.
+*
+    PERFORM WRITE-ACCOUNT-OR-CONTACT
+*           ========================
+*
+    MOVE STUDENT.ADDRESS-PREF(#I) TO #HOLD.ADDR-PREF
+*
+    PERFORM WRITE-ALL-ADDRESSES
+*           ===================
+  END-FOR
+*
+** Academic and payment bars can only be retrieved if a person
+** has a UIN.
+*
+  IF STUDENT.UIN              NE ' '
+*
+      PERFORM WRITE-BARS
+*             ==========
+*
+  END-IF
+*
+** Creates a parent record for shared records. 
+*
+  IF #HAS-PD EQ TRUE
+  AND #HAS-CG EQ TRUE
+  AND STUDENT.REC-TYPE EQ 'C'
+*
+    PERFORM WRITE-MASTER-ACCOUNT
+*           ====================
+*
+  END-IF
+END-READ
+*
+PERFORM EOJ-ROUTINE
+*       ===========
+************************************************************************
+**       I N T E R N A L   S U B R O U T I N E   S E C T I O N
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE WRITE-HEADERS
+* ------------------------------------------------------------------- *
+*
+COMPRESS 'ACAD-TYPE'               #TAB
+         'ACAD-TYPE-SID'           #TAB
+         'CONTACT-UNIQUE-ID'       #TAB
+         'SID'                     #TAB
+         'EID'                     #TAB
+         'FIRST-NAME-MIXED'        #TAB
+         'MIDDLE-NAME-MIXED'       #TAB
+         'LAST-NAME-MIXED'         #TAB
+         'PIN'                     #TAB
+         'BIRTHDATE'               #TAB
+         'GENDER'                  #TAB
+         'HIGHEST-DEGREE'          #TAB
+         'ETHNICITY'               #TAB
+         'CITIZENSHIP'             #TAB
+         'LAST-UPDATE-USERID'      #TAB
+         'LAST-UPDATE-NAME'        #TAB
+         'LAST-UPDATE-DATE'        #TAB
+         'PROG-DEPT'               #TAB
+         'ROLE'                    #TAB
+         'JOB-TITLE'               #TAB
+         'PREFERRED-PHONE-NUMBER'  #TAB
+         'EMAIL'                   #TAB
+         'DO-NOT-MAIL'             #TAB
+         'HOME-PHONE'              #TAB
+         'WORK-PHONE'              #TAB
+         'CELL-PHONE'              #TAB
+         'FAX'                     #TAB
+         'OTHER-PHONE'             #TAB
+         'PREFERRED-PHONE-TYPE'    #TAB
+         'SUFFIX'                  #TAB
+         'YOB-RANGE'               #TAB
+         'CONTACT-TYPE'            #TAB
+         'MISHELL-COMMENTS'        #TAB
+         'FIRST-LEAD-ID'           #TAB
+         'LASTEST-LEAD-ID'         #TAB
+         'PARENT-FIRST-LEAD-ID'    #TAB
+         'PARENT-LATEST-LEAD-ID'   #TAB
+                              INTO #WKFL-1 LEAVING NO SPACE
+*
+COMPRESS #WKFL-1 INTO #WKFL-DYNAMIC
+WRITE WORK FILE 1 VARIABLE #WKFL-DYNAMIC
+*
+COMPRESS 'ACAD-TYPE'                #TAB
+         'ACAD-TYPE-SID'            #TAB
+         'ACCOUNT-UNIQUE-ID'        #TAB
+         'SID'                      #TAB
+         'NAME-MIXED'               #TAB
+         'LAST-UPDATE-USERID'       #TAB
+         'LAST-UPDATE-NAME'         #TAB
+         'LAST-UPDATE-DATE'         #TAB
+         'PROG-DEPT'                #TAB
+         'EMPLOYER-ID'              #TAB
+         'PREFERRED-PHONE-NUMBER'   #TAB
+         'EMAIL'                    #TAB
+         'DO-NOT-MAIL'              #TAB
+         'HOME-PHONE'               #TAB
+         'WORK-PHONE'               #TAB
+         'CELL-PHONE'               #TAB
+         'FAX'                      #TAB
+         'OTHER-PHONE'              #TAB
+         'PREFERRED-PHONE-TYPE'     #TAB
+         'MISHELL-COMMENTS'         #TAB
+         'ACCOUNT-TYPE'             #TAB
+         'MASTER-UNIQUE-ID'         #TAB
+         'FIRST-LEAD-ID'            #TAB
+         'LASTEST-LEAD-ID'          #TAB
+         'PARENT-FIRST-LEAD-ID'     #TAB
+         'PARENT-LATEST-LEAD-ID'    #TAB
+                              INTO #WKFL-2 LEAVING NO SPACE
+*
+COMPRESS #WKFL-2 INTO #WKFL-DYNAMIC
+WRITE WORK FILE 2 VARIABLE #WKFL-DYNAMIC
+*
+*
+COMPRESS 'ADDR-UNIQUE-ID'                    #TAB
+         'CONTACT-UNIQUE-ID'                 #TAB
+         'ACCOUNT-UNIQUE-ID'                 #TAB
+         'ADDR-DEPT'                         #TAB
+         'ADDR-1'                            #TAB
+         'ADDR-2'                            #TAB
+         'CITY'                              #TAB
+         'STATE'                             #TAB
+         'ZIP'                               #TAB
+         'COUNTRY'                           #TAB
+         'ADDR-CODE'                         #TAB
+         'DEFAULT-ADDR'                      #TAB
+         'ADDR-LAST-UPDATE'                  #TAB
+         'ADDR-LAST-UPDATE-NAME'             #TAB
+         'ADDR-LAST-USERID'                  #TAB
+                              INTO #WKFL-3 LEAVING NO SPACE
+*
+COMPRESS #WKFL-3 INTO #WKFL-DYNAMIC
+WRITE WORK FILE 3 VARIABLE #WKFL-DYNAMIC
+*
+COMPRESS 'CONTACT-UNIQUE-ID'                 #TAB
+         'ACCOUNT-UNIQUE-ID'                 #TAB
+         'PROG-DEPT'                         #TAB
+         'AFFL-UNIQUE-ID'                    #TAB
+                              INTO #WKFL-4 LEAVING NO SPACE
+*
+COMPRESS #WKFL-4 INTO #WKFL-DYNAMIC
+WRITE WORK FILE 4 VARIABLE #WKFL-DYNAMIC
+*
+COMPRESS 'BAR-UNIQUE-ID'                     #TAB
+         'CONTACT-UNIQUE-ID'                 #TAB
+         'BAR-SOURCE'                        #TAB
+         'BAR-DEPT'                          #TAB
+         'BAR-TYPE'                          #TAB
+         'BAR-COMMENT'                       #TAB
+         'BAR-DATE-ADDED'                    #TAB
+         'BAR-ADDED-USERID'                  #TAB
+         'BAR-ADDED-NAME'                    #TAB
+         'BAR-DATE-WAIVED'                   #TAB
+         'BAR-WAIVED-USERID'                 #TAB
+         'BAR-WAIVED-NAME'                   #TAB
+                              INTO #WKFL-5 LEAVING NO SPACE
+*
+COMPRESS #WKFL-5 INTO #WKFL-DYNAMIC
+WRITE WORK FILE 5 VARIABLE #WKFL-DYNAMIC
+*
+COMPRESS 'ACAD-TYPE'                #TAB
+         'ACAD-TYPE-SID'            #TAB
+         'SID'                      #TAB
+         'NAME-MIXED'               #TAB
+         'LAST-UPDATE-USERID'       #TAB
+         'LAST-UPDATE-NAME'         #TAB
+         'LAST-UPDATE-DATE'         #TAB
+         'ACCOUNT-TYPE'             #TAB
+                              INTO #WKFL-6 LEAVING NO SPACE
+*
+COMPRESS #WKFL-6 INTO #WKFL-DYNAMIC
+WRITE WORK FILE 6 VARIABLE #WKFL-DYNAMIC
+*
+END-SUBROUTINE  /*  WRITE-HEADER
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE CREATE-UNIQUE-IDS
+* ------------------------------------------------------------------- *
+*
+MOVE RIGHT JUSTIFIED STUDENT.SID     TO #HOLD.SID
+*
+EXAMINE #HOLD.SID FOR ' ' AND REPLACE WITH '0'
+*
+COMPRESS STUDENT.ACAD-TYPE
+         #HOLD.SID                   TO #HOLD.ACAD-TYPE-SID
+                                     LEAVING NO SPACE
+*
+COMPRESS STUDENT.ACAD-TYPE
+         #HYPHEN
+         STUDENT.PROG-DEPT(#I)
+         #HYPHEN
+         #HOLD.SID                   TO #HOLD.UNIQUE-ID
+                                     LEAVING NO SPACE
+*
+IF STUDENT.REC-TYPE EQ 'I'
+  MOVE #HOLD.UNIQUE-ID               TO #HOLD.CONTACT-UNIQUE-ID
+END-IF
+*
+IF STUDENT.REC-TYPE EQ 'C'
+  MOVE #HOLD.UNIQUE-ID               TO #HOLD.ACCOUNT-UNIQUE-ID
+END-IF
+*
+END-SUBROUTINE  /* CREATE-UNIQUE-IDS
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE PROCESS-NAME-FIELDS
+* ------------------------------------------------------------------- *
+*
+IF #UTDP0002.LAST-NAME NE ' '
+  MOVE #UTDP0002.LAST-NAME        TO #HOLD.LAST-NAME
+  MOVE #UTDP0002.FIRST-NAME       TO #HOLD.FIRST-NAME
+  MOVE #UTDP0002.MIDDLE-NAME      TO #HOLD.MIDDLE-NAME
+  MOVE #UTDP0002.SUFFIX-NAME      TO #HOLD.SUFFIX
+ELSE
+  MOVE STUDENT.LAST-NAME-MIXED    TO #HOLD.LAST-NAME
+  MOVE STUDENT.FIRST-NAME-MIXED   TO #HOLD.FIRST-NAME
+  MOVE STUDENT.MIDDLE-NAME-MIXED  TO #HOLD.MIDDLE-NAME
+  MOVE STUDENT.SUFFIX             TO #HOLD.SUFFIX
+END-IF
+*
+EXAMINE #HOLD.LAST-NAME           FOR ',' DELETE
+EXAMINE #HOLD.FIRST-NAME          FOR ',' DELETE
+EXAMINE #HOLD.MIDDLE-NAME         FOR ',' DELETE
+EXAMINE #HOLD.SUFFIX              FOR ',' DELETE
+*
+EXAMINE #HOLD.LAST-NAME           FOR '"' DELETE
+EXAMINE #HOLD.FIRST-NAME          FOR '"' DELETE
+EXAMINE #HOLD.MIDDLE-NAME         FOR '"' DELETE
+EXAMINE #HOLD.SUFFIX              FOR '"' DELETE
+*
+END-SUBROUTINE  /* PROCESS-NAME-FIELDS
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE VALIDATE-EMAIL
+* ------------------------------------------------------------------- *
+*
+RESET #UTDPEMAD
+      #HOLD.EMAIL
+*
+MOVE #UTDP0002.EMAIL-ADDRESS   TO #HOLD.EMAIL
+*
+IF #HOLD.EMAIL EQ ' '
+  MOVE STUDENT.EMAIL(#I)         TO #HOLD.EMAIL
+END-IF
+*
+MOVE #HOLD.EMAIL                 TO #UTDPEMAD.EMAIL-ADDRESS
+MOVE 'Y'                         TO #UTDPEMAD.AUDIT-EXTENSIONS
+*
+CALLNAT 'UTN$EMAD' #UTDPEMAD
+*        ========
+*
+** Remove email address if it's not valid to prevent errors in uploading
+** to Salesforce. 
+*
+IF #UTDPEMAD.EMAIL-ADDRESS-VALID NE 'Y'
+  RESET #HOLD.EMAIL
+END-IF
+*
+*
+IF STUDENT.DO-NOT-MAIL(#I) NE ' '
+  MOVE 1 TO #HOLD.DO-NOT-MAIL
+ELSE
+  MOVE 0 TO #HOLD.DO-NOT-MAIL
+END-IF
+*
+END-SUBROUTINE  /* VALIDATE-EMAIL
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE GET-STUDENT-RECORD
+* ------------------------------------------------------------------- *
+*
+RESET #UTDP0002
+*
+MOVE STUDENT.UIN           TO #UTDP0002.SEND-UIN
+*
+CALLNAT 'UTN$0002' #UTDP0002
+*        ========
+*
+IF #UTDP0002.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+*
+** #UTDP0002.ETHNIC-TYPE, CITIZENSHIP, AND HIGH DEGREE USED IN
+** THE FOLLOWING SUBROUTINES
+*
+END-SUBROUTINE  /*  GET-STUDENT-RECORD
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE GET-EID
+* ------------------------------------------------------------------- *
+*
+RESET #UTDPELKP
+*
+MOVE STUDENT.UIN           TO #UTDPELKP.IN-UIN
+*
+CALLNAT 'UTN$ELKP' #UTDPELKP
+*        ========
+*
+IF #UTDPELKP.RETURN-CODE EQ ' '
+  MOVE #UTDPELKP.EID TO #HOLD.EID
+END-IF
+*
+END-SUBROUTINE  /*  GET-EID
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE TRANSLATE-ETHNICITY
+* ------------------------------------------------------------------- *
+*
+** Try to get ethnicity based on central student record first. ETHNIC2
+** values are the current values; ETHNIC values are historical values. 
+*
+FOR #J FROM 1 TO 6
+  IF #UTDP0002.ETHNIC-TYPE(#J) EQ ' '
+    ESCAPE TOP
+  END-IF 
+*
+  RESET #UTDPCODE
+*
+  IF #UTDP0002.ETHNIC-TYPE(#J) EQ MASK (N'0')
+    MOVE 'ETHNIC2'                    TO #UTDPCODE.#SEND-TABLE
+  ELSE
+    MOVE 'ETHNIC'                     TO #UTDPCODE.#SEND-TABLE
+  END-IF
+*
+  MOVE 'AU'                           TO #UTDPCODE.#SEND-ACTION
+  MOVE 1                              TO #UTDPCODE.#SEND-OCCUR
+  MOVE #UTDP0002.ETHNIC-TYPE(#J)      TO #UTDPCODE.#SEND-TAB-CODE
+*
+  CALLNAT 'UTN$CODE' #UTDPCODE
+*          ========
+*
+  IF #UTDPCODE.#RET-TAB-VALUE         NE ' '
+    COMPRESS #HOLD-ETHNICITY      
+             #UTDPCODE.#RET-TAB-VALUE
+             #SEMICOLON               TO #HOLD.ETHNICITY
+  END-IF
+*
+END-FOR
+*
+** If we can't get values from the central student record, get
+** values based on internal codes when available. 
+*  
+IF #HOLD.ETHNICITY                    EQ ' '
+AND STUDENT.ETHNICITY                 NE ' '
+*
+  DECIDE FOR FIRST CONDITION
+    WHEN STUDENT.ETHNICITY            EQ 'W'
+      MOVE #WHITE                     TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY            EQ 'B'
+      MOVE #BLACK                     TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY            EQ 'A'
+      MOVE #ASIAN                     TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY            EQ 'H'
+      MOVE #HISPANIC                  TO #HOLD.ETHNICITY
+    WHEN NONE
+      MOVE STUDENT.ETHNICITY          TO #HOLD-ETHNICITY
+  END-DECIDE
+*
+END-IF
+*
+END-SUBROUTINE  /*  TRANSLATE-ETHNICITY
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE TRANSLATE-HIGH-DEGREE
+* ------------------------------------------------------------------- *
+*
+IF #UTDP0002.HIGH-DEGREE NE ' '
+  RESET #UTDPCODE
+*
+  MOVE 'AU'                        TO #UTDPCODE.#SEND-ACTION
+  MOVE 'HIDEGREE'                  TO #UTDPCODE.#SEND-TABLE
+  MOVE 1                           TO #UTDPCODE.#SEND-OCCUR
+  MOVE #UTDP0002.HIGH-DEGREE       TO #UTDPCODE.#SEND-TAB-CODE
+*
+  CALLNAT 'UTN$CODE' #UTDPCODE
+*          ========
+*
+  IF #UTDPCODE.#RET-TAB-VALUE      NE ' '
+    MOVE #UTDPCODE.#RET-TAB-VALUE  TO #HOLD.HIGH-DEGREE
+  ELSE
+    COMPRESS 'Unknown (' STUDENT.HIGHEST-DEGREE ')'
+                                   TO #HOLD.HIGH-DEGREE
+                                   LEAVING NO SPACE
+  END-IF
+END-IF
+*
+END-SUBROUTINE  /*  TRANSLATE-HIGH-DEGREE
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE WRITE-EMPLOYER-AFFILIATIONS
+* ------------------------------------------------------------------- *
+*
+RESET #HOLD.EMPL-SID
+*
+MOVE RIGHT JUSTIFIED STUDENT.EMPLOYER-ID(#I) TO #HOLD.EMPL-SID
+*
+EXAMINE #HOLD.EMPL-SID FOR ' ' AND REPLACE WITH '0'
+*
+COMPRESS STUDENT.ACAD-TYPE
+         #HOLD.EMPL-SID        TO #HOLD.EMPL-ACAD-TYPE-SID
+LEAVING NO SPACE
+*
+RESET #HOLD.EMPLOYER-FOUND
+*
+FIND RECORDS EMPLOYER WITH ACAD-TYPE-SID
+ EQ #HOLD.EMPL-ACAD-TYPE-SID
+*
+  MOVE TRUE                    TO #HOLD.EMPLOYER-FOUND
+*
+END-FIND
+*
+IF #HOLD.EMPLOYER-FOUND        EQ TRUE
+*
+  RESET #WKFL-4
+        #HOLD.EMPL-UNIQUE-ID
+*
+** create a unique ID to identify the record in Salesforce
+*
+  COMPRESS STUDENT.ACAD-TYPE
+           #HYPHEN
+           STUDENT.PROG-DEPT(#I)
+           #HYPHEN
+           #HOLD.EMPL-SID             TO #HOLD.EMPL-UNIQUE-ID
+                                      LEAVING NO SPACE
+*
+** write completed affiliation to work file
+*
+  COMPRESS  #HOLD.CONTACT-UNIQUE-ID       #TAB
+            #HOLD.EMPL-UNIQUE-ID          #TAB
+                                          #TAB
+            #HOLD.CONTACT-UNIQUE-ID
+            #HOLD.EMPL-UNIQUE-ID          #TAB
+                                          INTO #WKFL-4
+                                          LEAVING NO SPACE
+*
+  COMPRESS #WKFL-4 INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 4 VARIABLE #WKFL-DYNAMIC
+*
+END-IF
+END-SUBROUTINE  /*  WRITE-EMPLOYER-AFFILIATIONS
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE MOVE-PHONE
+* ------------------------------------------------------------------- *
+*
+** get phone numbers for Academic type records from the central 
+** student record
+*
+IF STUDENT.ACAD-TYPE EQ 'A'
+AND #UTDP0002.RETURN-CODE EQ ' '
+  MOVE #UE                              TO #HOLD.PHONE-DEPT
+  IF #UTDP0002.AREA-PHONE NE 0
+    MOVE #UTDP0002.AREA-PHONE           TO #HOLD.HOME-PHONE
+                                           #HOLD.PREFERRED-PHONE-NUMBER
+    MOVE 'Local'                        TO #HOLD.PREFERRED-PHONE-TYPE
+  END-IF
+*
+  IF #UTDP0002.PERM-PHONE NE 0
+    MOVE #UTDP0002.PERM-PHONE           TO #HOLD.OTHER-PHONE
+    IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
+      MOVE #UTDP0002.PERM-PHONE         TO #HOLD.PREFERRED-PHONE-NUMBER
+      MOVE 'Other'                      TO #HOLD.PREFERRED-PHONE-TYPE
+    END-IF
+  END-IF
+*
+  ESCAPE ROUTINE
+END-IF
+*
+** get phone numbers for non-academic records from internal file
+*
+IF STUDENT.PHONE-PREF(#I) GT 0
+AND STUDENT.PHONE-PREF(#I) LE 20
+AND STUDENT.ACAD-TYPE NE 'A'
+*
+  MOVE STUDENT.PHONE-PREF(#I)                TO #PHONE-I
+  MOVE STUDENT.PHONE-DEPT(#PHONE-I)          TO #HOLD.PHONE-DEPT
+*
+  IF STUDENT.HOME-PHONE(#PHONE-I)            NE '0'
+    MOVE STUDENT.HOME-PHONE(#PHONE-I)        TO #HOLD.HOME-PHONE
+    EXAMINE #HOLD.HOME-PHONE FOR '(' DELETE
+    EXAMINE #HOLD.HOME-PHONE FOR ')' DELETE
+    EXAMINE #HOLD.HOME-PHONE FOR ' ' DELETE
+    EXAMINE #HOLD.HOME-PHONE FOR '-' DELETE
+    EXAMINE #HOLD.HOME-PHONE FOR ' ' DELETE
+    IF SUBSTRING(#HOLD.HOME-PHONE,11,15) NE ' '
+      COMPRESS SUBSTRING(#HOLD.HOME-PHONE,1,10)
+               'ext.'
+               SUBSTRING(#HOLD.HOME-PHONE,11,15)
+                                             TO #HOLD.HOME-PHONE
+    END-IF
+  END-IF
+*
+  IF STUDENT.WORK-PHONE(#PHONE-I)            NE '0'
+    MOVE STUDENT.WORK-PHONE(#PHONE-I)        TO #HOLD.WORK-PHONE
+    EXAMINE #HOLD.WORK-PHONE FOR '(' DELETE
+    EXAMINE #HOLD.WORK-PHONE FOR ')' DELETE
+    EXAMINE #HOLD.WORK-PHONE FOR ' ' DELETE
+    EXAMINE #HOLD.WORK-PHONE FOR '-' DELETE
+    EXAMINE #HOLD.WORK-PHONE FOR ' ' DELETE
+    IF SUBSTRING(#HOLD.WORK-PHONE,11,15) NE ' '
+      COMPRESS SUBSTRING(#HOLD.WORK-PHONE,1,10)
+               'ext.'
+               SUBSTRING(#HOLD.WORK-PHONE,11,15)
+                                             TO #HOLD.WORK-PHONE
+    END-IF
+  END-IF
+*
+** Move phone numbers directly for when field labels match in 
+** SIS and Salesforce. 
+*
+  IF STUDENT.CELL-PHONE(#PHONE-I)            NE '0'
+    MOVE STUDENT.CELL-PHONE(#PHONE-I)        TO #HOLD.CELL-PHONE
+  END-IF
+*
+  IF STUDENT.FAX(#PHONE-I)                   NE '0'
+    MOVE STUDENT.FAX(#PHONE-I)               TO #HOLD.FAX
+  END-IF
+*
+  IF STUDENT.OTHER-PHONE(#PHONE-I)           NE '0'
+    MOVE STUDENT.OTHER-PHONE(#PHONE-I)       TO #HOLD.OTHER-PHONE
+  END-IF
+*
+** Set preferred phone number and set field labels to match Salesforce. 
+*
+  IF STUDENT.USER-PREF-PHONE(#PHONE-I)       EQ 'H'
+  AND STUDENT.HOME-PHONE(#PHONE-I)           NE '0'
+    MOVE STUDENT.HOME-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
+    MOVE 'Home'                              TO #HOLD.PREFERRED-PHONE-TYPE
+  END-IF
+*
+  IF STUDENT.USER-PREF-PHONE(#PHONE-I)       EQ 'W'
+  AND STUDENT.WORK-PHONE(#PHONE-I)           NE '0'
+    MOVE STUDENT.WORK-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
+    MOVE 'Work'                              TO #HOLD.PREFERRED-PHONE-TYPE
+  END-IF
+*
+  IF STUDENT.USER-PREF-PHONE(#PHONE-I)       EQ 'C'
+  AND STUDENT.CELL-PHONE(#PHONE-I)           NE '0'
+    MOVE STUDENT.CELL-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
+    MOVE 'Mobile'                            TO #HOLD.PREFERRED-PHONE-TYPE
+  END-IF
+*
+  IF STUDENT.USER-PREF-PHONE(#PHONE-I)       EQ 'F'
+  AND STUDENT.FAX(#PHONE-I)                  NE '0'
+    MOVE STUDENT.FAX(#PHONE-I)               TO #HOLD.PREFERRED-PHONE-NUMBER
+    MOVE 'Fax'                               TO #HOLD.PREFERRED-PHONE-TYPE
+  END-IF
+  IF STUDENT.USER-PREF-PHONE(#PHONE-I)       EQ 'O'
+  AND STUDENT.OTHER-PHONE(#PHONE-I)          NE '0'
+    MOVE STUDENT.OTHER-PHONE(#PHONE-I)       TO #HOLD.PREFERRED-PHONE-NUMBER
+    MOVE 'Other'                             TO #HOLD.PREFERRED-PHONE-TYPE
+  END-IF
+*
+** Get human-readable information for last updated info.
+*
+  MOVE STUDENT.PHONE-LAST-UPDATE(#PHONE-I)   TO #HOLD.PHONE-LAST-UPDATE
+*
+  RESET #UTDPELKP
+*
+  MOVE STUDENT.PHONE-LAST-USERID(#PHONE-I)   TO #UTDPELKP.IN-UIN
+*
+  CALLNAT 'UTN$ELKP' #UTDPELKP
+*          ========
+*
+  IF #UTDPELKP.RETURN-CODE NE ' '
+    MOVE "NOTFOUND"                          TO #HOLD.PHONE-LAST-USERID
+  ELSE
+    MOVE #UTDPELKP.EID                       TO #HOLD.PHONE-LAST-USERID
+  END-IF
+*
+END-IF
+*
+IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
+AND #PHONE-I NE 0
+  MOVE STUDENT.CELL-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
+  MOVE 'Mobile'                              TO #HOLD.PREFERRED-PHONE-TYPE
+END-IF
+*
+IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
+AND #PHONE-I NE 0
+  MOVE STUDENT.HOME-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
+  MOVE 'Home'                              TO #HOLD.PREFERRED-PHONE-TYPE
+END-IF
+*
+** If no preferred phone number is set, default to setting the work phone
+** as the preferred phone.
+*
+IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
+AND #PHONE-I NE 0
+  MOVE STUDENT.WORK-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
+  MOVE 'Work'                              TO #HOLD.PREFERRED-PHONE-TYPE
+END-IF
+*
+** Clean up data to match Salesforce requirements.
+*
+EXAMINE #HOLD.PREFERRED-PHONE-NUMBER FOR '(' DELETE
+EXAMINE #HOLD.PREFERRED-PHONE-NUMBER FOR ')' DELETE
+EXAMINE #HOLD.PREFERRED-PHONE-NUMBER FOR ' ' DELETE
+EXAMINE #HOLD.PREFERRED-PHONE-NUMBER FOR '-' DELETE
+EXAMINE #HOLD.PREFERRED-PHONE-NUMBER FOR ' ' DELETE
+*
+** if the phone number includes an extension, set up text for Salesforce
+** to display that information.
+*
+IF SUBSTRING(#HOLD.PREFERRED-PHONE-NUMBER,11,15) NE ' '
+  COMPRESS SUBSTRING(#HOLD.PREFERRED-PHONE-NUMBER,1,10)
+           'ext.'
+           SUBSTRING(#HOLD.PREFERRED-PHONE-NUMBER,11,15)
+                                           TO #HOLD.PREFERRED-PHONE-NUMBER
+    END-IF
+*
+END-SUBROUTINE  /*  MOVE-PHONE
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE TRANSLATE-LAST-UPDATE-USERID
+* ------------------------------------------------------------------- *
+*
+** to human readable information.
+*
+RESET #UTDPELKP
+*
+MOVE STUDENT.LAST-UPDATE-USERID   TO #UTDPELKP.IN-UIN
+*
+CALLNAT 'UTN$ELKP' #UTDPELKP
+*        ========
+*
+IF #UTDPELKP.RETURN-CODE NE ' '
+  MOVE "NOT FOUND"                TO #HOLD.LAST-UPDATE-NAME
+ELSE
+  MOVE #UTDPELKP.EID              TO #HOLD.LAST-UPDATE-USERID
+  MOVE #UTDPELKP.DISPLAY-NAME     TO #HOLD.LAST-UPDATE-NAME
+END-IF
+*
+END-SUBROUTINE  /*  TRANSLATE-LAST-UPDATE-USERID
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE WRITE-ALL-ADDRESSES
+* ------------------------------------------------------------------- *
+*
+** For Non-academic records, get addresses from internal records
+*
+IF STUDENT.ACAD-TYPE NE 'A'
+*
+  FOR #K FROM 1 TO 20
+*
+    RESET #HOLD.ADDR-UNIQUE-ID
+          #HOLD.DEFAULT-ADDR
+          #HOLD.ADDR-TYPE
+*
+** Only move addresses that are valid addresses. 
+*
+    IF STUDENT.ADDR-DEPT(#K)   NE ' '
+    AND STUDENT.ADDR-1(#K)     NE 'NONE'
+    AND STUDENT.CITY(#K)       NE ' '
+    AND (STUDENT.ADDR-DEPT(#K) EQ STUDENT.PROG-DEPT(#I)
+    OR #HOLD.ADDR-PREF         EQ #K)
+*
+      RESET #UTDPELKP
+            #WKFL-3
+            #HOLD.ADDR-LAST-USERID-2
+            #HOLD.ALL-ADDR-1
+            #HOLD.ALL-ADDR-2
+*
+** Get human-readable information regarding who last updated the 
+** address records 
+*
+      MOVE STUDENT.ADDR-LAST-USERID(#K)       TO #UTDPELKP.IN-UIN
+*
+      CALLNAT 'UTN$ELKP' #UTDPELKP
+*              ========
+*
+      IF #UTDPELKP.RETURN-CODE NE ' '
+        MOVE "NOT FOUND"                      TO #HOLD.ADDR-LAST-USERID-2
+      ELSE
+        MOVE #UTDPELKP.EID                    TO #HOLD.ADDR-LAST-USERID-2
+        MOVE #UTDPELKP.DISPLAY-NAME           TO #HOLD.ADDR-UPDATE-NAME-2
+      END-IF
+      MOVE STUDENT.ADDR-LAST-UPDATE(#K)       TO #HOLD.ADDR-LAST-UPDATE-2
+*
+** Start compressing all address fields into one field as needed for 
+** Salesforce. 
+*
+      COMPRESS STUDENT.ADDR-0(#K)    TO #HOLD.ALL-ADDR-1
+*
+      IF #HOLD.ALL-ADDR-1            NE ' '
+      AND STUDENT.ADDR-3(#K)         NE ' '
+        COMPRESS #HOLD.ALL-ADDR-1 #COMMA TO #HOLD.ADDR-WITH-COMMA
+                                         LEAVING NO SPACE
+*
+        COMPRESS #HOLD.ADDR-WITH-COMMA STUDENT.ADDR-3(#K)
+                                     TO #HOLD.ALL-ADDR-1
+*
+      END-IF
+*
+      IF #HOLD.ALL-ADDR-1            EQ ' '
+      AND STUDENT.ADDR-3(#K)         NE ' '
+        COMPRESS STUDENT.ADDR-3(#K)  TO #HOLD.ALL-ADDR-1
+      END-IF
+*
+      IF #HOLD.ALL-ADDR-1            NE ' '
+      AND STUDENT.ADDR-1(#K)         NE ' '
+*
+        COMPRESS #HOLD.ALL-ADDR-1 #COMMA TO #HOLD.ADDR-WITH-COMMA
+                                         LEAVING NO SPACE
+        COMPRESS #HOLD.ADDR-WITH-COMMA STUDENT.ADDR-1(#K)
+                                     TO #HOLD.ALL-ADDR-1
+      END-IF
+*
+      IF #HOLD.ALL-ADDR-1            EQ ' '
+      AND STUDENT.ADDR-1(#K)         NE ' '
+        COMPRESS STUDENT.ADDR-1(#K)  TO #HOLD.ALL-ADDR-1
+      END-IF
+*
+      COMPRESS STUDENT.ADDR-2(#K)    TO #HOLD.ALL-ADDR-2
+*
+      IF #K EQ #HOLD.ADDR-PREF
+        MOVE 1                       TO #HOLD.DEFAULT-ADDR
+        MOVE TRUE                    TO #HOLD.DEFAULT-ADDR-FOUND
+      END-IF
+*
+** Set address type for each address. 
+*
+      DECIDE FOR FIRST CONDITION
+        WHEN STUDENT.ADDR-CODE(#K)   EQ 'H'
+          MOVE 'Home'                TO #HOLD.ADDR-TYPE
+        WHEN STUDENT.ADDR-CODE(#K)   EQ 'B'
+          MOVE 'Work'                TO #HOLD.ADDR-TYPE
+        WHEN STUDENT.ADDR-CODE(#K)   EQ 'C'
+          MOVE 'Campus'              TO #HOLD.ADDR-TYPE
+        WHEN STUDENT.ADDR-CODE(#K)   EQ 'T'
+          MOVE 'Temporary'           TO #HOLD.ADDR-TYPE
+        WHEN STUDENT.ADDR-CODE(#K)   EQ 'O'
+          MOVE 'Other'               TO #HOLD.ADDR-TYPE
+        WHEN STUDENT.ADDR-CODE(#K)   EQ 'S'
+          MOVE 'Shipping'            TO #HOLD.ADDR-TYPE
+        WHEN NONE
+          MOVE STUDENT.ADDR-CODE(#K) TO #HOLD.ADDR-TYPE
+     END-DECIDE
+*     
+     COMPRESS #HOLD.UNIQUE-ID
+              STUDENT.ADDR-DEPT(#K)
+              STUDENT.ADDR-CODE(#K)
+              #K
+                                INTO #HOLD.ADDR-UNIQUE-ID
+                                LEAVING NO SPACE
+*
+      COMPRESS #QUOTE #HOLD.ADDR-UNIQUE-ID           #QUOTE #TAB
+               #QUOTE #HOLD.CONTACT-UNIQUE-ID        #QUOTE #TAB
+               #QUOTE #HOLD.ACCOUNT-UNIQUE-ID        #QUOTE #TAB
+               #QUOTE STUDENT.PROG-DEPT(#I)          #QUOTE #TAB
+               #QUOTE #HOLD.ALL-ADDR-1               #QUOTE #TAB
+               #QUOTE #HOLD.ALL-ADDR-2               #QUOTE #TAB
+               #QUOTE STUDENT.CITY(#K)               #QUOTE #TAB
+               #QUOTE STUDENT.STATE(#K)              #QUOTE #TAB
+               #QUOTE STUDENT.ZIP(#K)                #QUOTE #TAB
+               #QUOTE STUDENT.COUNTRY(#K)            #QUOTE #TAB
+               #QUOTE #HOLD.ADDR-TYPE                #QUOTE #TAB
+               #QUOTE #HOLD.DEFAULT-ADDR             #QUOTE #TAB
+               #QUOTE #HOLD.ADDR-LAST-UPDATE-2       #QUOTE #TAB
+               #QUOTE #HOLD.ADDR-UPDATE-NAME-2       #QUOTE #TAB
+               #QUOTE #HOLD.ADDR-LAST-USERID-2       #QUOTE #TAB
+                                              INTO #WKFL-3 LEAVING NO SPACE
+*
+      COMPRESS #WKFL-3 INTO #WKFL-DYNAMIC
+      WRITE WORK FILE 3 VARIABLE #WKFL-DYNAMIC
+*
+    END-IF
+*
+  END-FOR
+END-IF
+*
+** For academic records available through the Registrar's office:
+*
+IF STUDENT.ACAD-TYPE EQ 'A'
+AND #UTDP0002.RETURN-CODE EQ ' '
+*
+  IF #UTDP0002.AREA-CITY NE ' '
+    RESET #WKFL-3
+*
+    MOVE RIGHT JUSTIFIED #UTDP0002.AREA-UPDATE-DATE
+                                        TO #HOLD.ADDR-LAST-UPDATE-A6
+*
+    IF  #HOLD.ADDR-LAST-UPDATE-A6-YY    LT '40'
+      MOVE '20' TO #HOLD.ADDR-LAST-UPDATE-A8-CC
+    ELSE
+      MOVE '19' TO #HOLD.ADDR-LAST-UPDATE-A8-CC
+    END-IF
+*
+    IF  #HOLD.ADDR-LAST-UPDATE-A6-MM    LT '10'
+      MOVE '1' TO #HOLD.ADDR-LAST-UPDATE-A8-M1
+      MOVE SUBSTRING(#HOLD.ADDR-LAST-UPDATE-A6-MM,2,1)
+                                       TO #HOLD.ADDR-LAST-UPDATE-A8-M2
+    ELSE
+      MOVE #HOLD.ADDR-LAST-UPDATE-A6-MM TO  #HOLD.ADDR-LAST-UPDATE-A6-MM
+    END-IF
+*
+    MOVE #HOLD.ADDR-LAST-UPDATE-A6-YY  TO #HOLD.ADDR-LAST-UPDATE-A8-YY
+    MOVE #HOLD.ADDR-LAST-UPDATE-A6-DD  TO #HOLD.ADDR-LAST-UPDATE-A8-DD
+*
+    IF #HOLD.DEFAULT-ADDR-FOUND NE TRUE
+      ADD 1 TO #HOLD.DEFAULT-ADDR
+    END-IF
+*
+    COMPRESS #QUOTE #HOLD.UNIQUE-ID
+                    #UE
+                    "L"                            #QUOTE #TAB
+             #QUOTE #HOLD.CONTACT-UNIQUE-ID        #QUOTE #TAB
+             #QUOTE #HOLD.ACCOUNT-UNIQUE-ID        #QUOTE #TAB
+             #QUOTE #UE                            #QUOTE #TAB
+             #QUOTE #UTDP0002.AREA-ADDR-1          #QUOTE #TAB
+             #QUOTE #UTDP0002.AREA-ADDR-2          #QUOTE #TAB
+             #QUOTE #UTDP0002.AREA-CITY            #QUOTE #TAB
+             #QUOTE #UTDP0002.AREA-STATE           #QUOTE #TAB
+             #QUOTE #UTDP0002.AREA-ZIP             #QUOTE #TAB
+             #QUOTE "USA"                          #QUOTE #TAB
+             #QUOTE 'Local'                        #QUOTE #TAB
+             #QUOTE #HOLD.DEFAULT-ADDR             #QUOTE #TAB
+             #QUOTE #HOLD.ADDR-LAST-UPDATE-A8      #QUOTE #TAB
+                                              INTO #WKFL-3 LEAVING NO SPACE
+*
+    COMPRESS #WKFL-3 INTO #WKFL-DYNAMIC
+    WRITE WORK FILE 3 VARIABLE #WKFL-3
+  END-IF
+*
+  IF #UTDP0002.PERM-CITY NE ' '
+    RESET #WKFL-3
+    MOVE RIGHT JUSTIFIED #UTDP0002.PERM-UPDATE-DATE
+                                        TO #HOLD.ADDR-LAST-UPDATE-A6
+    IF #HOLD.ADDR-LAST-UPDATE-A6-YY    LT '40'
+      MOVE '20' TO #HOLD.ADDR-LAST-UPDATE-A8-CC
+    ELSE
+      MOVE '19' TO #HOLD.ADDR-LAST-UPDATE-A8-CC
+    END-IF
+    IF #HOLD.ADDR-LAST-UPDATE-A6-MM    LT '10'
+      MOVE '1' TO #HOLD.ADDR-LAST-UPDATE-A8-M1
+      MOVE SUBSTRING(#HOLD.ADDR-LAST-UPDATE-A6-MM,2,1)
+                                TO #HOLD.ADDR-LAST-UPDATE-A8-M2
+    ELSE
+     MOVE #HOLD.ADDR-LAST-UPDATE-A6-MM TO  #HOLD.ADDR-LAST-UPDATE-A6-MM
+    END-IF
+    MOVE #HOLD.ADDR-LAST-UPDATE-A6-YY TO
+                                 #HOLD.ADDR-LAST-UPDATE-A8-YY
+    MOVE #HOLD.ADDR-LAST-UPDATE-A6-DD TO
+                                 #HOLD.ADDR-LAST-UPDATE-A8-DD
+    COMPRESS #QUOTE #HOLD.UNIQUE-ID
+                    #UE
+                    "P"                            #QUOTE #TAB
+             #QUOTE #HOLD.CONTACT-UNIQUE-ID        #QUOTE #TAB
+             #QUOTE #HOLD.ACCOUNT-UNIQUE-ID        #QUOTE #TAB
+             #QUOTE #UE                            #QUOTE #TAB
+             #QUOTE #UTDP0002.PERM-ADDR-1          #QUOTE #TAB
+             #QUOTE #UTDP0002.PERM-ADDR-2          #QUOTE #TAB
+             #QUOTE #UTDP0002.PERM-CITY            #QUOTE #TAB
+             #QUOTE #UTDP0002.PERM-STATE           #QUOTE #TAB
+             #QUOTE #UTDP0002.PERM-ZIP             #QUOTE #TAB
+             #QUOTE "USA"                          #QUOTE #TAB
+             #QUOTE 'Permanent'                    #QUOTE #TAB
+             #QUOTE 0                              #QUOTE #TAB
+             #QUOTE #HOLD.ADDR-LAST-UPDATE-A8      #QUOTE #TAB
+                                              INTO #WKFL-3 LEAVING NO SPACE
+*
+    COMPRESS #WKFL-3 INTO #WKFL-DYNAMIC
+    WRITE WORK FILE 3 VARIABLE #WKFL-DYNAMIC
+  END-IF
+*
+  IF #UTDP0002.FOREIGN-ADDR-SWITCH   NE ' '
+  AND #UTDP0002.FOREIGN-ADDRESS(1)   NE ' '
+  AND #UTDP0002.FOREIGN-ADDRESS(2)   NE ' '
+  AND #UTDP0002.FOREIGN-ADDRESS(3)   NE ' '
+  AND #UTDP0002.FOREIGN-ADDRESS(4)   NE ' '
+  AND #UTDP0002.FOREIGN-ADDRESS(5)   NE ' '
+    RESET #WKFL-3
+    COMPRESS #QUOTE #HOLD.UNIQUE-ID
+                    #UE
+                    "F"                            #QUOTE #TAB
+             #QUOTE #HOLD.CONTACT-UNIQUE-ID        #QUOTE #TAB
+             #QUOTE #HOLD.ACCOUNT-UNIQUE-ID        #QUOTE #TAB
+             #QUOTE #UE                            #QUOTE #TAB
+             #QUOTE #UTDP0002.FOREIGN-ADDRESS(1)   #QUOTE #TAB
+             #QUOTE #UTDP0002.FOREIGN-ADDRESS(2)   #QUOTE #TAB
+             #QUOTE #UTDP0002.FOREIGN-ADDRESS(3)   #QUOTE #TAB
+             #QUOTE #UTDP0002.FOREIGN-ADDRESS(4)   #QUOTE #TAB
+             #QUOTE #UTDP0002.FOREIGN-ADDRESS(5)   #QUOTE #TAB
+                                                          #TAB
+             #QUOTE 'Foreign'                      #QUOTE #TAB
+             #QUOTE 0                              #QUOTE #TAB
+                                                          #TAB
+                                            INTO #WKFL-3 LEAVING NO SPACE
+*
+    COMPRESS #WKFL-3 INTO #WKFL-DYNAMIC
+    WRITE WORK FILE 3 VARIABLE #WKFL-DYNAMIC
+  END-IF
+*
+END-IF
+*
+END-SUBROUTINE  /*  WRITE-ALL-ADDRESSES
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE WRITE-BARS
+* ------------------------------------------------------------------- *
+** Includes academic and financial bars. 
+*
+RESET #UTDPBARS
+*
+MOVE STUDENT.UIN TO #UTDPBARS.IN-UIN
+*
+CALLNAT 'UTNPBARS' #UTDPBARS
+*        ========
+*
+IF #UTDPBARS.RETURN-CODE NE ' '
+  ESCAPE ROUTINE
+END-IF
+*
+** Issues with personal checks clearing. 
+*
+IF #UTDPBARS.NO-PERSONAL-CHECK NE ' '
+  RESET #WKFL-5
+  COMPRESS #QUOTE #HOLD.UNIQUE-ID 'C'           #QUOTE #TAB
+           #QUOTE #HOLD.UNIQUE-ID               #QUOTE #TAB
+           #QUOTE 'MISHELL'                     #QUOTE #TAB
+           #QUOTE #UE                           #QUOTE #TAB
+           #QUOTE 'Personal Check'              #QUOTE #TAB
+           #QUOTE #UTDPBARS.NO-PERSONAL-CHECK   #QUOTE #TAB
+                    INTO #WKFL-5 LEAVING NO SPACE
+*
+  COMPRESS #WKFL-5 INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 5 VARIABLE #WKFL-DYNAMIC
+END-IF
+*
+** Academic dismissals from other departments, 
+*
+FOR #L FROM 1 TO 32
+  IF #UTDPBARS.DISMISSAL-TYPE(#L) NE ' '
+  AND #UTDPBARS.DISMISSAL-WE-CARE(#L) NE ' '
+*
+    RESET #HOLD.DISMISSAL
+          #HOLD.DISMISSAL-COLLEGE
+          #HOLD.DISMISSAL-START-CCYYS
+          #HOLD.DISMISSAL-END-CCYYS
+          #HOLD.DISMISSAL-WE-CARE
+          #WKFL-5
+*
+    IF #UTDPBARS.DISMISSAL-COLLEGE(#L) NE ' '
+      COMPRESS 'College: ' #UTDPBARS.DISMISSAL-COLLEGE(#L)
+                                   INTO #HOLD.DISMISSAL-COLLEGE
+    END-IF
+*
+    IF #UTDPBARS.DISMISSAL-START-CCYYS(#L) NE ' '
+      COMPRESS 'Start: ' #UTDPBARS.DISMISSAL-START-CCYYS(#L)
+                                   INTO #HOLD.DISMISSAL-START-CCYYS
+    END-IF
+*
+    IF #UTDPBARS.DISMISSAL-END-CCYYS(#L) NE ' '
+      COMPRESS 'End: ' #UTDPBARS.DISMISSAL-END-CCYYS(#L)
+                                   INTO #HOLD.DISMISSAL-END-CCYYS
+    END-IF
+*
+    IF #UTDPBARS.DISMISSAL-WE-CARE(#L) NE ' '
+      COMPRESS 'Important to UEX: ' #UTDPBARS.DISMISSAL-WE-CARE(#L)
+                                   INTO #HOLD.DISMISSAL-WE-CARE
+    END-IF
+*
+    COMPRESS #UTDPBARS.DISMISSAL-DESC(#L)
+             #HOLD.DISMISSAL-COLLEGE
+             #HOLD.DISMISSAL-START-CCYYS
+             #HOLD.DISMISSAL-END-CCYYS
+             #HOLD.DISMISSAL-WE-CARE
+                                     INTO #HOLD.DISMISSAL
+*
+    COMPRESS #QUOTE #HOLD.UNIQUE-ID 'D' #L        #QUOTE #TAB
+             #QUOTE #HOLD.UNIQUE-ID               #QUOTE #TAB
+             #QUOTE 'MISHELL'                     #QUOTE #TAB
+             #QUOTE #UE                           #QUOTE #TAB
+             #QUOTE #UTDPBARS.DISMISSAL-TYPE(#L)  #QUOTE #TAB
+             #QUOTE #HOLD.DISMISSAL               #QUOTE #TAB
+                                          INTO #WKFL-5 LEAVING NO SPACE
+*
+    COMPRESS #WKFL-5 INTO #WKFL-DYNAMIC
+    WRITE WORK FILE 5 VARIABLE #WKFL-DYNAMIC
+  END-IF
+END-FOR
+*
+FOR #L FROM 1 TO 15
+  IF #UTDPBARS.BAR-TYPE(#L) EQ ' '
+    ESCAPE TOP
+  END-IF
+*
+  RESET #HOLD.BAR-ADDED-USERID
+        #HOLD.BAR-ADDED-NAME
+        #HOLD.BAR-WAIVED-USERID
+        #HOLD.BAR-WAIVED-NAME
+        #WKFL-5
+*
+** Human-readable information about last updates. 
+*
+  IF #UTDPBARS.BAR-ADDED-USER(#L) NE ' '
+    RESET #UTDPELKP
+*
+    MOVE #UTDPBARS.BAR-ADDED-USER(#L)    TO #UTDPELKP.IN-PERM-EID
+*
+    CALLNAT 'UTN$ELKP' #UTDPELKP
+*            ========
+*
+    IF #UTDPELKP.RETURN-CODE NE ' '
+      RESET #UTDPELKP
+*
+      MOVE #UTDPBARS.BAR-ADDED-USER(#L)  TO #UTDPELKP.IN-UIN
+*
+      CALLNAT 'UTN$ELKP' #UTDPELKP
+*              ========
+*
+      IF #UTDPELKP.RETURN-CODE NE ' '
+        MOVE #UTDPELKP.EID               TO #HOLD.BAR-ADDED-USERID
+        MOVE #UTDPELKP.DISPLAY-NAME      TO #HOLD.BAR-ADDED-NAME
+      END-IF
+*
+    ELSE
+      MOVE #UTDPELKP.EID                 TO #HOLD.BAR-ADDED-USERID
+      MOVE #UTDPELKP.DISPLAY-NAME        TO #HOLD.BAR-ADDED-NAME
+    END-IF
+*
+  END-IF
+*
+** If a bar was waived, move human-readable information about who waived it, 
+*
+  IF #UTDPBARS.BAR-WAIVED-USER(#L) NE ' '
+    RESET #UTDPELKP
+*
+    MOVE #UTDPBARS.BAR-WAIVED-USER(#L)  TO #UTDPELKP.IN-PERM-EID
+*
+    CALLNAT 'UTN$ELKP' #UTDPELKP
+*            ========
+*
+    IF #UTDPELKP.RETURN-CODE NE ' '
+     RESET #UTDPELKP
+*
+     MOVE #UTDPBARS.BAR-WAIVED-USER(#L) TO #UTDPELKP.IN-UIN
+*
+     CALLNAT 'UTN$ELKP' #UTDPELKP
+*             ========
+      IF #UTDPELKP.RETURN-CODE NE ' '
+        MOVE #UTDPELKP.EID              TO #HOLD.BAR-WAIVED-USERID
+        MOVE #UTDPELKP.DISPLAY-NAME     TO #HOLD.BAR-WAIVED-NAME
+      END-IF
+*
+    ELSE
+*
+      MOVE #UTDPELKP.EID                TO #HOLD.BAR-WAIVED-USERID
+      MOVE #UTDPELKP.DISPLAY-NAME       TO #HOLD.BAR-WAIVED-NAME
+    END-IF
+*
+  END-IF
+*
+  COMPRESS #QUOTE #HOLD.UNIQUE-ID 'B' #L        #QUOTE #TAB
+           #QUOTE #HOLD.UNIQUE-ID               #QUOTE #TAB
+           #QUOTE 'MISHELL'                     #QUOTE #TAB
+           #QUOTE #UE                           #QUOTE #TAB
+           #QUOTE #UTDPBARS.BAR-TYPE(#L)        #QUOTE #TAB
+           #QUOTE #UTDPBARS.BAR-COMMENT(#L)     #QUOTE #TAB
+           #QUOTE #UTDPBARS.BAR-DATE-ADDED(#L)  #QUOTE #TAB
+           #QUOTE #HOLD.BAR-ADDED-USERID        #QUOTE #TAB
+           #QUOTE #HOLD.BAR-ADDED-NAME          #QUOTE #TAB
+           #QUOTE #UTDPBARS.BAR-DATE-WAIVED(#L) #QUOTE #TAB
+           #QUOTE #HOLD.BAR-WAIVED-USERID       #QUOTE #TAB
+           #QUOTE #HOLD.BAR-WAIVED-NAME         #QUOTE #TAB
+                                          INTO #WKFL-5 LEAVING NO SPACE
+*
+  COMPRESS #WKFL-5 INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 5 VARIABLE #WKFL-DYNAMIC
+*
+END-FOR
+*
+END-SUBROUTINE  /*  WRITE-BARS
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE GET-TEXT-ONLINE-COMMENTS
+* ------------------------------------------------------------------- *
+*
+** These comments consist of those that aren't directly on the student
+** record due to a lack of space.
+*
+** Create search key for comments file. 
+*
+COMPRESS STUDENT.SID
+         'SN'
+         STUDENT.PROG-DEPT(#I) TO #SK-TEXT-ONLINE LEAVING NO SPACE
+* 
+** Compress all comments related to this particular record. 
+*        
+READ TEXT-ONLINE BY SID-REC-TYP-UNIT-SEQ STARTING FROM #SK-TEXT-ONLINE
+  IF TEXT-ONLINE.SID NE STUDENT.SID
+  OR TEXT-ONLINE.REC-TYPE NE 'SN'
+  OR TEXT-ONLINE.UNIT-CODE NE STUDENT.PROG-DEPT(#I)
+    ESCAPE BOTTOM
+  END-IF
+*
+  RESET #HOLD.CETO-COMMENTS
+  FOR #M FROM 1 TO 36
+    IF TEXT-ONLINE.DATA(#M) NE ' '
+      COMPRESS #HOLD.CETO-COMMENTS
+               TEXT-ONLINE.DATA(#M) TO #HOLD.CETO-COMMENTS
+    END-IF
+  END-FOR
+*
+  IF #HOLD.CETO-COMMENTS NE ' '
+    COMPRESS #HOLD.COMMENTS
+             #HOLD.CETO-COMMENTS
+                              INTO #HOLD.COMMENTS
+*
+  END-IF
+END-READ
+*
+END-SUBROUTINE  /*  GET-TEXT-ONLINE-COMMENTS
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE PERFORM-FINAL-DATA-TRANSLATIONS
+* ------------------------------------------------------------------- *
+*
+** Translate gender codes based on the record's origin. 
+*
+IF #UTDP0002.SEX EQ 'F'
+  MOVE #FEMALE TO #HOLD.GENDER
+ELSE
+  IF STUDENT.GENDER EQ 'F'
+    MOVE #FEMALE TO #HOLD.GENDER
+  END-IF
+END-IF
+*
+IF #UTDP0002.SEX EQ 'M'
+  MOVE #MALE TO #HOLD.GENDER
+ELSE
+  IF STUDENT.GENDER EQ 'M'
+    MOVE #MALE TO #HOLD.GENDER
+  END-IF
+END-IF
+*
+** Compress comments from additional comments file + comments thhat
+** come directly from the student record in order to line up with single 
+** comment field in Salesforce and clean up double quotes.  
+*
+COMPRESS STUDENT.COMMENTS(*) STUDENT.DP-COMMENTS(#I,*) #HOLD.COMMENTS
+                                 INTO #HOLD.COMMENTS
+*
+EXAMINE #HOLD.COMMENTS FOR '"' REPLACE WITH "'"
+*
+** Translate codes to line up with expected Salesforce value. 
+*
+IF STUDENT.ROLE(#I) EQ ' '
+  MOVE 'Student'                 TO #HOLD.ROLE
+END-IF
+*
+IF STUDENT.ROLE(#I) EQ 'C'
+  MOVE 'Contact/Coordinator'     TO #HOLD.ROLE
+END-IF
+*
+IF STUDENT.ROLE(#I) EQ 'I'
+  MOVE 'Instructor'              TO #HOLD.ROLE
+END-IF
+*
+IF #HOLD.PROG-DEPT EQ 'CG'
+   MOVE 'Business Organization'  TO #HOLD.RECORD-TYPE
+ELSE
+   MOVE 'Core'                   TO #HOLD.RECORD-TYPE
+END-IF
+*
+END-SUBROUTINE  /*  PERFORM-FINAL-DATA-TRANSLATIONS
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE WRITE-ACCOUNT-OR-CONTACT
+* ------------------------------------------------------------------- *
+*
+IF STUDENT.REC-TYPE EQ 'I'
+*
+  COMPRESS NUMERIC
+            #QUOTE STUDENT.ACAD-TYPE                  #QUOTE  #TAB
+            #QUOTE #HOLD.ACAD-TYPE-SID                #QUOTE  #TAB
+            #QUOTE #HOLD.UNIQUE-ID                    #QUOTE  #TAB
+            #QUOTE #HOLD.SID                          #QUOTE  #TAB
+            #QUOTE #HOLD.EID                          #QUOTE  #TAB
+            #QUOTE #HOLD.FIRST-NAME                   #QUOTE  #TAB
+            #QUOTE #HOLD.MIDDLE-NAME                  #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-NAME                    #QUOTE  #TAB
+            #QUOTE STUDENT.PIN                        #QUOTE  #TAB
+            #QUOTE STUDENT.BIRTHDATE                  #QUOTE  #TAB
+            #QUOTE #HOLD.GENDER                       #QUOTE  #TAB
+            #QUOTE #HOLD.HIGH-DEGREE                  #QUOTE  #TAB
+            #QUOTE #HOLD.ETHNICITY                    #QUOTE  #TAB
+            #QUOTE #HOLD.CITIZENSHIP                  #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-UPDATE-USERID           #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-UPDATE-NAME             #QUOTE  #TAB
+            #QUOTE STUDENT.LAST-UPDATE-DATE           #QUOTE  #TAB
+            #QUOTE #HOLD.PROG-DEPT                    #QUOTE  #TAB
+            #QUOTE #HOLD.ROLE                         #QUOTE  #TAB
+            #QUOTE STUDENT.JOB-TITLE(#I)              #QUOTE  #TAB
+            #QUOTE #HOLD.PREFERRED-PHONE-NUMBER       #QUOTE  #TAB
+            #QUOTE #HOLD.EMAIL                        #QUOTE  #TAB
+            #QUOTE #HOLD.DO-NOT-MAIL                  #QUOTE  #TAB
+            #QUOTE #HOLD.HOME-PHONE                   #QUOTE  #TAB
+            #QUOTE #HOLD.WORK-PHONE                   #QUOTE  #TAB
+            #QUOTE #HOLD.CELL-PHONE                   #QUOTE  #TAB
+            #QUOTE #HOLD.FAX                          #QUOTE  #TAB
+            #QUOTE #HOLD.OTHER-PHONE                  #QUOTE  #TAB
+            #QUOTE #HOLD.PREFERRED-PHONE-TYPE         #QUOTE  #TAB
+            #QUOTE #HOLD.SUFFIX                       #QUOTE  #TAB
+            #QUOTE STUDENT.YOB-RANGE                  #QUOTE  #TAB
+            #QUOTE #HOLD.RECORD-TYPE                  #QUOTE  #TAB
+            #QUOTE #HOLD.COMMENTS                     #QUOTE  #TAB
+            #QUOTE STUDENT.FIRST-LEAD-ID(#I)          #QUOTE  #TAB
+            #QUOTE STUDENT.LATEST-LEAD-ID(#I)         #QUOTE  #TAB
+            #QUOTE STUDENT.PARENT-FIRST-LEAD-ID(#I)   #QUOTE  #TAB
+            #QUOTE STUDENT.PARENT-LATEST-LEAD-ID(#I)  #QUOTE  #TAB
+                                        INTO #WKFL-1 LEAVING NO SPACE
+*
+  COMPRESS #WKFL-1    INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 1 VARIABLE #WKFL-DYNAMIC
+*
+END-IF
+*
+IF STUDENT.REC-TYPE EQ 'C'
+AND STUDENT.NAME-UPPERCASE NE ' '
+*
+  IF #HAS-PD EQ TRUE
+  AND #HAS-CG EQ TRUE
+    MOVE #HOLD.ACAD-TYPE-SID TO #HOLD.MASTER-UNIQUE-ID
+  END-IF
+*  
+  COMPRESS  STUDENT.LAST-NAME-MIXED
+            STUDENT.FIRST-NAME-MIXED
+            STUDENT.MIDDLE-NAME-MIXED
+                              INTO #HOLD.ACCOUNT-NAME
+                              LEAVING NO SPACE
+  COMPRESS NUMERIC
+            #QUOTE STUDENT.ACAD-TYPE                 #QUOTE  #TAB
+            #QUOTE #HOLD.ACAD-TYPE-SID               #QUOTE  #TAB
+            #QUOTE #HOLD.UNIQUE-ID                   #QUOTE  #TAB
+            #QUOTE #HOLD.SID                         #QUOTE  #TAB
+            #QUOTE #HOLD.ACCOUNT-NAME                #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-UPDATE-USERID          #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-UPDATE-NAME            #QUOTE  #TAB
+            #QUOTE STUDENT.LAST-UPDATE-DATE          #QUOTE  #TAB
+            #QUOTE #HOLD.PROG-DEPT                   #QUOTE  #TAB
+            #QUOTE STUDENT.EMPLOYER-ID(#I)           #QUOTE  #TAB
+            #QUOTE #HOLD.PREFERRED-PHONE-NUMBER      #QUOTE  #TAB
+            #QUOTE #HOLD.EMAIL                       #QUOTE  #TAB
+            #QUOTE #HOLD.DO-NOT-MAIL                 #QUOTE  #TAB
+            #QUOTE #HOLD.HOME-PHONE                  #QUOTE  #TAB
+            #QUOTE #HOLD.WORK-PHONE                  #QUOTE  #TAB
+            #QUOTE #HOLD.CELL-PHONE                  #QUOTE  #TAB
+            #QUOTE #HOLD.FAX                         #QUOTE  #TAB
+            #QUOTE #HOLD.OTHER-PHONE                 #QUOTE  #TAB
+            #QUOTE #HOLD.PREFERRED-PHONE-TYPE        #QUOTE  #TAB
+            #QUOTE #HOLD.COMMENTS                    #QUOTE  #TAB
+            #QUOTE #HOLD.RECORD-TYPE                 #QUOTE  #TAB
+            #QUOTE #HOLD.MASTER-UNIQUE-ID            #QUOTE  #TAB
+            #QUOTE STUDENT.FIRST-LEAD-ID(#I)         #QUOTE  #TAB
+            #QUOTE STUDENT.LATEST-LEAD-ID(#I)        #QUOTE  #TAB
+            #QUOTE STUDENT.PARENT-FIRST-LEAD-ID(#I)  #QUOTE  #TAB
+            #QUOTE STUDENT.PARENT-LATEST-LEAD-ID(#I) #QUOTE  #TAB
+                                        INTO #WKFL-2 LEAVING NO SPACE
+*
+  COMPRESS #WKFL-2 INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 2 VARIABLE #WKFL-DYNAMIC
+*
+END-IF
+*
+** Writes affiliations between student and their department. 
+*
+IF STUDENT.REC-TYPE EQ 'I'
+*
+  RESET #WKFL-4
+  COMPRESS NUMERIC
+              #HOLD.UNIQUE-ID          #TAB
+                                       #TAB
+              STUDENT.PROG-DEPT(#I)    #TAB
+              #HOLD.UNIQUE-ID
+              STUDENT.PROG-DEPT(#I)    #TAB
+                                         INTO #WKFL-4 LEAVING NO SPACE
+*
+  COMPRESS #WKFL-4 INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 4 VARIABLE #WKFL-DYNAMIC
+*
+END-IF
+
+ADD 1 TO #RECS-WRITTEN
+*
+END-SUBROUTINE  /*  WRITE-ACCOUNT-OR-CONTACT
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE WRITE-MASTER-ACCOUNT
+* ------------------------------------------------------------------- *
+*
+** For records that cross CG/CGLS and PD/CPE.
+*
+  COMPRESS  #QUOTE STUDENT.ACAD-TYPE         #QUOTE  #TAB
+            #QUOTE #HOLD.ACAD-TYPE-SID       #QUOTE  #TAB
+            #QUOTE #HOLD.SID                 #QUOTE  #TAB
+            #QUOTE #HOLD.ACCOUNT-NAME        #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-UPDATE-USERID  #QUOTE  #TAB
+            #QUOTE #HOLD.LAST-UPDATE-NAME    #QUOTE  #TAB
+            #QUOTE STUDENT.LAST-UPDATE-DATE  #QUOTE  #TAB
+            #QUOTE 'Master'                  #QUOTE  #TAB
+                                        INTO #WKFL-2 LEAVING NO SPACE
+*
+  COMPRESS #WKFL-2 INTO #WKFL-DYNAMIC
+  WRITE WORK FILE 6 VARIABLE #WKFL-DYNAMIC
+*
+END-SUBROUTINE  /*  WRITE-MASTER-ACCOUNT
+*
+* ------------------------------------------------------------------- *
+DEFINE SUBROUTINE EOJ-ROUTINE
+* ------------------------------------------------------------------- *
+*
+WRITE 'RECS READ:'     #RECS-READ
+WRITE 'RECS-ACCEPTED:' #RECS-ACCEPTED
+WRITE 'RECS-WRITTEN:'  #RECS-WRITTEN
+*
+END-SUBROUTINE  /*  EOJ-ROUTINE
+*
+END
