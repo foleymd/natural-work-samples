@@ -271,8 +271,8 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 *
   ADD 1 TO #RECS-READ
 *
-  IF STUDENT.REC-TYPE  NE 'I'  /* 'I'ndividual
-  AND STUDENT.REC-TYPE NE 'C' /* 'C'ompany
+  IF STUDENT.REC-TYPE          NE 'I'  /* 'I'ndividual
+  AND STUDENT.REC-TYPE         NE 'C' /* 'C'ompany
     ESCAPE TOP
   END-IF
 *
@@ -280,16 +280,16 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 ** corresponding to 'A'cademic, 'N'on-academic & 'O'lli
 ** ACAD-TYPEs
 *
-  IF STUDENT.ACAD-TYPE  NE 'A'   
-  AND STUDENT.ACAD-TYPE NE 'N'  
-  AND STUDENT.ACAD-TYPE NE 'O'   
+  IF STUDENT.ACAD-TYPE         NE 'A'   
+  AND STUDENT.ACAD-TYPE        NE 'N'  
+  AND STUDENT.ACAD-TYPE        NE 'O'   
     ESCAPE TOP
   END-IF
 *
 ** Skip person records that don't have last names.
 *
-  IF STUDENT.REC-TYPE         EQ 'I'     
-  AND STUDENT.LAST-NAME-MIXED EQ ' ' 
+  IF STUDENT.REC-TYPE          EQ 'I'     
+  AND STUDENT.LAST-NAME-MIXED  EQ ' ' 
     ESCAPE TOP
   END-IF
 *
@@ -306,11 +306,11 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 ** later processing
 *
   FOR #I FROM 1 TO 30              
-    IF STUDENT.PROG-DEPT(#I)  EQ #PD
-          MOVE TRUE               TO #HAS-PD 
+    IF STUDENT.PROG-DEPT(#I)    EQ #PD
+          MOVE TRUE             TO #HAS-PD 
     END-IF                          
-     IF STUDENT.PROG-DEPT(#I) EQ #CG
-      MOVE TRUE               TO #HAS-CG
+     IF STUDENT.PROG-DEPT(#I)   EQ #CG
+      MOVE TRUE                 TO #HAS-CG
     END-IF
   END-FOR
 *
@@ -318,22 +318,22 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 *
 ** Escape top on records from non-core units
 *
-    IF STUDENT.PROG-DEPT(#I)  NE #UE     /* UEX
-    AND STUDENT.PROG-DEPT(#I) NE #PD     /* CPE
-    AND STUDENT.PROG-DEPT(#I) NE #IC     /* IC
-    AND STUDENT.PROG-DEPT(#I) NE #CG     /* Biz Dev/CGLS
+    IF STUDENT.PROG-DEPT(#I)    NE #UE     /* UEX
+    AND STUDENT.PROG-DEPT(#I)   NE #PD     /* CPE
+    AND STUDENT.PROG-DEPT(#I)   NE #IC     /* IC
+    AND STUDENT.PROG-DEPT(#I)   NE #CG     /* Biz Dev/CGLS
       ESCAPE TOP
     END-IF
 *
 ** For CG records, we only want instructors or contacts,
 ** not students.
 *
-    IF STUDENT.PROG-DEPT(#I)  EQ 'CG' 
-    AND STUDENT.ROLE(#I)      EQ ' '      
+    IF STUDENT.PROG-DEPT(#I)    EQ 'CG' 
+    AND STUDENT.ROLE(#I)        EQ ' '      
       ESCAPE TOP
     END-IF
 *
-    ADD 1                     TO #RECS-ACCEPTED
+    ADD 1                       TO #RECS-ACCEPTED
 *
     RESET #HOLD
           #WKFL-1
@@ -341,20 +341,20 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 *
 **  Moving a user-friendly program department over
 *
-    IF STUDENT.PROG-DEPT(#I)   EQ #PD
-      MOVE #CPE                TO #HOLD.PROG-DEPT
+    IF STUDENT.PROG-DEPT(#I)     EQ #PD
+      MOVE #CPE                  TO #HOLD.PROG-DEPT
     END-IF
 *
-    IF STUDENT.PROG-DEPT(#I)   EQ #UE
-      MOVE #UEX                TO #HOLD.PROG-DEPT
+    IF STUDENT.PROG-DEPT(#I)     EQ #UE
+      MOVE #UEX                  TO #HOLD.PROG-DEPT
     END-IF
 *
-    IF STUDENT.PROG-DEPT(#I)   EQ #IC
-      MOVE #IC                 TO #HOLD.PROG-DEPT
+    IF STUDENT.PROG-DEPT(#I)     EQ #IC
+      MOVE #IC                   TO #HOLD.PROG-DEPT
     END-IF
 *
-    IF STUDENT.PROG-DEPT(#I)   EQ #CG
-      MOVE #CG                 TO #HOLD.PROG-DEPT
+    IF STUDENT.PROG-DEPT(#I)     EQ #CG
+      MOVE #CG                   TO #HOLD.PROG-DEPT
     END-IF
 *
     PERFORM CREATE-UNIQUE-IDS    /* for Salesforce IDs
@@ -363,20 +363,20 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 ** Get EID from Registrar data when possible for 
 ** all records.
 *
-    IF STUDENT.UIN NE ' '
+    IF STUDENT.UIN               NE ' '
       PERFORM GET-EID
 *             =======
     END-IF
 *
 ** Get Registrar data for all UEX records. 
 *
-    IF STUDENT.PROG-DEPT(#I) EQ #UE
+    IF STUDENT.PROG-DEPT(#I)    EQ #UE
 *
       PERFORM GET-STUDENT-RECORD
 *             ==================
 *
-      IF #UTDP0002.RETURN-CODE EQ ' '
-      AND STUDENT.ACAD-TYPE EQ 'A'
+      IF #UTDP0002.RETURN-CODE  EQ ' '
+      AND STUDENT.ACAD-TYPE     EQ 'A'
       AND STUDENT.PROG-DEPT(#I) EQ #UE
 *
         PERFORM TRANSLATE-ETHNICITY
@@ -390,7 +390,7 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 ** For records that are people (not companies), clean
 ** up data.
 *
-    IF STUDENT.REC-TYPE EQ 'I'
+    IF STUDENT.REC-TYPE         EQ 'I'
       PERFORM PROCESS-NAME-FIELDS
 *             ===================
     END-IF
@@ -403,8 +403,8 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 *
 ** Affiliations connect people with employers in Salesforce
 *
-    IF STUDENT.EMPLOYER-ID(#I) NE 0
-    AND STUDENT.REC-TYPE EQ 'I'
+    IF STUDENT.EMPLOYER-ID(#I)  NE 0
+    AND STUDENT.REC-TYPE        EQ 'I'
 *    
       PERFORM WRITE-EMPLOYER-AFFILIATIONS
 *             ==================
@@ -444,7 +444,7 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 ** Academic and payment bars can only be retrieved if a person
 ** has a UIN.
 *
-  IF STUDENT.UIN              NE ' '
+  IF STUDENT.UIN                  NE ' '
 *
       PERFORM WRITE-BARS
 *             ==========
@@ -453,9 +453,9 @@ READ-STUDENT. READ MULTI-FETCH 50 STUDENT DESCENDING BY ACAD-TYPE-SID
 *
 ** Creates a parent record for shared records. 
 *
-  IF #HAS-PD EQ TRUE
-  AND #HAS-CG EQ TRUE
-  AND STUDENT.REC-TYPE EQ 'C'
+  IF #HAS-PD                      EQ TRUE
+  AND #HAS-CG                     EQ TRUE
+  AND STUDENT.REC-TYPE            EQ 'C'
 *
     PERFORM WRITE-MASTER-ACCOUNT
 *           ====================
@@ -624,11 +624,11 @@ COMPRESS STUDENT.ACAD-TYPE
          #HOLD.SID                   TO #HOLD.UNIQUE-ID
                                      LEAVING NO SPACE
 *
-IF STUDENT.REC-TYPE EQ 'I'
+IF STUDENT.REC-TYPE                  EQ 'I'
   MOVE #HOLD.UNIQUE-ID               TO #HOLD.CONTACT-UNIQUE-ID
 END-IF
-*
-IF STUDENT.REC-TYPE EQ 'C'
+* 
+IF STUDENT.REC-TYPE                  EQ 'C'
   MOVE #HOLD.UNIQUE-ID               TO #HOLD.ACCOUNT-UNIQUE-ID
 END-IF
 *
@@ -637,7 +637,7 @@ END-SUBROUTINE  /* CREATE-UNIQUE-IDS
 DEFINE SUBROUTINE PROCESS-NAME-FIELDS
 * ------------------------------------------------------------------- *
 *
-IF #UTDP0002.LAST-NAME NE ' '
+IF #UTDP0002.LAST-NAME            NE ' '
   MOVE #UTDP0002.LAST-NAME        TO #HOLD.LAST-NAME
   MOVE #UTDP0002.FIRST-NAME       TO #HOLD.FIRST-NAME
   MOVE #UTDP0002.MIDDLE-NAME      TO #HOLD.MIDDLE-NAME
@@ -669,12 +669,12 @@ RESET #UTDPEMAD
 *
 MOVE #UTDP0002.EMAIL-ADDRESS   TO #HOLD.EMAIL
 *
-IF #HOLD.EMAIL EQ ' '
-  MOVE STUDENT.EMAIL(#I)         TO #HOLD.EMAIL
+IF #HOLD.EMAIL                 EQ ' '
+  MOVE STUDENT.EMAIL(#I)       TO #HOLD.EMAIL
 END-IF
 *
-MOVE #HOLD.EMAIL                 TO #UTDPEMAD.EMAIL-ADDRESS
-MOVE 'Y'                         TO #UTDPEMAD.AUDIT-EXTENSIONS
+MOVE #HOLD.EMAIL               TO #UTDPEMAD.EMAIL-ADDRESS
+MOVE 'Y'                       TO #UTDPEMAD.AUDIT-EXTENSIONS
 *
 CALLNAT 'UTN$EMAD' #UTDPEMAD
 *        ========
@@ -687,10 +687,10 @@ IF #UTDPEMAD.EMAIL-ADDRESS-VALID NE 'Y'
 END-IF
 *
 *
-IF STUDENT.DO-NOT-MAIL(#I) NE ' '
-  MOVE 1 TO #HOLD.DO-NOT-MAIL
+IF STUDENT.DO-NOT-MAIL(#I)       NE ' '
+  MOVE 1                         TO #HOLD.DO-NOT-MAIL
 ELSE
-  MOVE 0 TO #HOLD.DO-NOT-MAIL
+  MOVE 0                         TO #HOLD.DO-NOT-MAIL
 END-IF
 *
 END-SUBROUTINE  /* VALIDATE-EMAIL
@@ -705,7 +705,7 @@ MOVE STUDENT.UIN           TO #UTDP0002.SEND-UIN
 CALLNAT 'UTN$0002' #UTDP0002
 *        ========
 *
-IF #UTDP0002.RETURN-CODE NE ' '
+IF #UTDP0002.RETURN-CODE   NE ' '
   ESCAPE ROUTINE
 END-IF
 *
@@ -725,8 +725,8 @@ MOVE STUDENT.UIN           TO #UTDPELKP.IN-UIN
 CALLNAT 'UTN$ELKP' #UTDPELKP
 *        ========
 *
-IF #UTDPELKP.RETURN-CODE EQ ' '
-  MOVE #UTDPELKP.EID TO #HOLD.EID
+IF #UTDPELKP.RETURN-CODE   EQ ' '
+  MOVE #UTDPELKP.EID       TO #HOLD.EID
 END-IF
 *
 END-SUBROUTINE  /*  GET-EID
@@ -738,29 +738,29 @@ DEFINE SUBROUTINE TRANSLATE-ETHNICITY
 ** values are the current values; ETHNIC values are historical values. 
 *
 FOR #J FROM 1 TO 6
-  IF #UTDP0002.ETHNIC-TYPE(#J) EQ ' '
+  IF #UTDP0002.ETHNIC-TYPE(#J)   EQ ' '
     ESCAPE TOP
   END-IF 
 *
   RESET #UTDPCODE
 *
-  IF #UTDP0002.ETHNIC-TYPE(#J) EQ MASK (N'0')
-    MOVE 'ETHNIC2'                    TO #UTDPCODE.#SEND-TABLE
+  IF #UTDP0002.ETHNIC-TYPE(#J)    EQ MASK (N'0')
+    MOVE 'ETHNIC2'                TO #UTDPCODE.#SEND-TABLE
   ELSE
-    MOVE 'ETHNIC'                     TO #UTDPCODE.#SEND-TABLE
+    MOVE 'ETHNIC'                 TO #UTDPCODE.#SEND-TABLE
   END-IF
 *
-  MOVE 'AU'                           TO #UTDPCODE.#SEND-ACTION
-  MOVE 1                              TO #UTDPCODE.#SEND-OCCUR
-  MOVE #UTDP0002.ETHNIC-TYPE(#J)      TO #UTDPCODE.#SEND-TAB-CODE
+  MOVE 'AU'                       TO #UTDPCODE.#SEND-ACTION
+  MOVE 1                          TO #UTDPCODE.#SEND-OCCUR
+  MOVE #UTDP0002.ETHNIC-TYPE(#J)  TO #UTDPCODE.#SEND-TAB-CODE
 *
   CALLNAT 'UTN$CODE' #UTDPCODE
 *          ========
 *
-  IF #UTDPCODE.#RET-TAB-VALUE         NE ' '
+  IF #UTDPCODE.#RET-TAB-VALUE      NE ' '
     COMPRESS #HOLD-ETHNICITY      
              #UTDPCODE.#RET-TAB-VALUE
-             #SEMICOLON               TO #HOLD.ETHNICITY
+             #SEMICOLON            TO #HOLD.ETHNICITY
   END-IF
 *
 END-FOR
@@ -768,20 +768,20 @@ END-FOR
 ** If we can't get values from the central student record, get
 ** values based on internal codes when available. 
 *  
-IF #HOLD.ETHNICITY                    EQ ' '
-AND STUDENT.ETHNICITY                 NE ' '
+IF #HOLD.ETHNICITY                  EQ ' '
+AND STUDENT.ETHNICITY               NE ' '
 *
   DECIDE FOR FIRST CONDITION
-    WHEN STUDENT.ETHNICITY            EQ 'W'
-      MOVE #WHITE                     TO #HOLD.ETHNICITY
-    WHEN STUDENT.ETHNICITY            EQ 'B'
-      MOVE #BLACK                     TO #HOLD.ETHNICITY
-    WHEN STUDENT.ETHNICITY            EQ 'A'
-      MOVE #ASIAN                     TO #HOLD.ETHNICITY
-    WHEN STUDENT.ETHNICITY            EQ 'H'
-      MOVE #HISPANIC                  TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY          EQ 'W'
+      MOVE #WHITE                   TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY          EQ 'B'
+      MOVE #BLACK                   TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY          EQ 'A'
+      MOVE #ASIAN                   TO #HOLD.ETHNICITY
+    WHEN STUDENT.ETHNICITY          EQ 'H'
+      MOVE #HISPANIC                TO #HOLD.ETHNICITY
     WHEN NONE
-      MOVE STUDENT.ETHNICITY          TO #HOLD-ETHNICITY
+      MOVE STUDENT.ETHNICITY        TO #HOLD-ETHNICITY
   END-DECIDE
 *
 END-IF
@@ -791,7 +791,7 @@ END-SUBROUTINE  /*  TRANSLATE-ETHNICITY
 DEFINE SUBROUTINE TRANSLATE-HIGH-DEGREE
 * ------------------------------------------------------------------- *
 *
-IF #UTDP0002.HIGH-DEGREE NE ' '
+IF #UTDP0002.HIGH-DEGREE           NE ' '
   RESET #UTDPCODE
 *
   MOVE 'AU'                        TO #UTDPCODE.#SEND-ACTION
@@ -871,18 +871,18 @@ DEFINE SUBROUTINE MOVE-PHONE
 ** get phone numbers for Academic type records from the central 
 ** student record
 *
-IF STUDENT.ACAD-TYPE EQ 'A'
-AND #UTDP0002.RETURN-CODE EQ ' '
+IF STUDENT.ACAD-TYPE                    EQ 'A'
+AND #UTDP0002.RETURN-CODE               EQ ' '
   MOVE #UE                              TO #HOLD.PHONE-DEPT
-  IF #UTDP0002.AREA-PHONE NE 0
+  IF #UTDP0002.AREA-PHONE               NE 0
     MOVE #UTDP0002.AREA-PHONE           TO #HOLD.HOME-PHONE
                                            #HOLD.PREFERRED-PHONE-NUMBER
     MOVE 'Local'                        TO #HOLD.PREFERRED-PHONE-TYPE
   END-IF
 *
-  IF #UTDP0002.PERM-PHONE NE 0
+  IF #UTDP0002.PERM-PHONE               NE 0
     MOVE #UTDP0002.PERM-PHONE           TO #HOLD.OTHER-PHONE
-    IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
+    IF #HOLD.PREFERRED-PHONE-NUMBER     EQ ' '
       MOVE #UTDP0002.PERM-PHONE         TO #HOLD.PREFERRED-PHONE-NUMBER
       MOVE 'Other'                      TO #HOLD.PREFERRED-PHONE-TYPE
     END-IF
@@ -893,9 +893,9 @@ END-IF
 *
 ** get phone numbers for non-academic records from internal file
 *
-IF STUDENT.PHONE-PREF(#I) GT 0
-AND STUDENT.PHONE-PREF(#I) LE 20
-AND STUDENT.ACAD-TYPE NE 'A'
+IF STUDENT.PHONE-PREF(#I)                    GT 0
+AND STUDENT.PHONE-PREF(#I)                   LE 20
+AND STUDENT.ACAD-TYPE                        NE 'A'
 *
   MOVE STUDENT.PHONE-PREF(#I)                TO #PHONE-I
   MOVE STUDENT.PHONE-DEPT(#PHONE-I)          TO #HOLD.PHONE-DEPT
@@ -907,7 +907,7 @@ AND STUDENT.ACAD-TYPE NE 'A'
     EXAMINE #HOLD.HOME-PHONE FOR ' ' DELETE
     EXAMINE #HOLD.HOME-PHONE FOR '-' DELETE
     EXAMINE #HOLD.HOME-PHONE FOR ' ' DELETE
-    IF SUBSTRING(#HOLD.HOME-PHONE,11,15) NE ' '
+    IF SUBSTRING(#HOLD.HOME-PHONE,11,15)     NE ' '
       COMPRESS SUBSTRING(#HOLD.HOME-PHONE,1,10)
                'ext.'
                SUBSTRING(#HOLD.HOME-PHONE,11,15)
@@ -915,18 +915,18 @@ AND STUDENT.ACAD-TYPE NE 'A'
     END-IF
   END-IF
 *
-  IF STUDENT.WORK-PHONE(#PHONE-I)            NE '0'
-    MOVE STUDENT.WORK-PHONE(#PHONE-I)        TO #HOLD.WORK-PHONE
+  IF STUDENT.WORK-PHONE(#PHONE-I)             NE '0'
+    MOVE STUDENT.WORK-PHONE(#PHONE-I)         TO #HOLD.WORK-PHONE
     EXAMINE #HOLD.WORK-PHONE FOR '(' DELETE
     EXAMINE #HOLD.WORK-PHONE FOR ')' DELETE
     EXAMINE #HOLD.WORK-PHONE FOR ' ' DELETE
     EXAMINE #HOLD.WORK-PHONE FOR '-' DELETE
     EXAMINE #HOLD.WORK-PHONE FOR ' ' DELETE
-    IF SUBSTRING(#HOLD.WORK-PHONE,11,15) NE ' '
+    IF SUBSTRING(#HOLD.WORK-PHONE,11,15)      NE ' '
       COMPRESS SUBSTRING(#HOLD.WORK-PHONE,1,10)
                'ext.'
                SUBSTRING(#HOLD.WORK-PHONE,11,15)
-                                             TO #HOLD.WORK-PHONE
+                                              TO #HOLD.WORK-PHONE
     END-IF
   END-IF
 *
@@ -987,7 +987,7 @@ AND STUDENT.ACAD-TYPE NE 'A'
   CALLNAT 'UTN$ELKP' #UTDPELKP
 *          ========
 *
-  IF #UTDPELKP.RETURN-CODE NE ' '
+  IF #UTDPELKP.RETURN-CODE                   NE ' '
     MOVE "NOTFOUND"                          TO #HOLD.PHONE-LAST-USERID
   ELSE
     MOVE #UTDPELKP.EID                       TO #HOLD.PHONE-LAST-USERID
@@ -995,14 +995,14 @@ AND STUDENT.ACAD-TYPE NE 'A'
 *
 END-IF
 *
-IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
-AND #PHONE-I NE 0
+IF #HOLD.PREFERRED-PHONE-NUMBER            EQ ' '
+AND #PHONE-I                               NE 0
   MOVE STUDENT.CELL-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
-  MOVE 'Mobile'                              TO #HOLD.PREFERRED-PHONE-TYPE
+  MOVE 'Mobile'                            TO #HOLD.PREFERRED-PHONE-TYPE
 END-IF
 *
-IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
-AND #PHONE-I NE 0
+IF #HOLD.PREFERRED-PHONE-NUMBER            EQ ' '
+AND #PHONE-I                               NE 0
   MOVE STUDENT.HOME-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
   MOVE 'Home'                              TO #HOLD.PREFERRED-PHONE-TYPE
 END-IF
@@ -1010,8 +1010,8 @@ END-IF
 ** If no preferred phone number is set, default to setting the work phone
 ** as the preferred phone.
 *
-IF #HOLD.PREFERRED-PHONE-NUMBER EQ ' '
-AND #PHONE-I NE 0
+IF #HOLD.PREFERRED-PHONE-NUMBER            EQ ' '
+AND #PHONE-I                               NE 0
   MOVE STUDENT.WORK-PHONE(#PHONE-I)        TO #HOLD.PREFERRED-PHONE-NUMBER
   MOVE 'Work'                              TO #HOLD.PREFERRED-PHONE-TYPE
 END-IF
@@ -1048,7 +1048,7 @@ MOVE STUDENT.LAST-UPDATE-USERID   TO #UTDPELKP.IN-UIN
 CALLNAT 'UTN$ELKP' #UTDPELKP
 *        ========
 *
-IF #UTDPELKP.RETURN-CODE NE ' '
+IF #UTDPELKP.RETURN-CODE          NE ' '
   MOVE "NOT FOUND"                TO #HOLD.LAST-UPDATE-NAME
 ELSE
   MOVE #UTDPELKP.EID              TO #HOLD.LAST-UPDATE-USERID
@@ -1062,7 +1062,7 @@ DEFINE SUBROUTINE WRITE-ALL-ADDRESSES
 *
 ** For Non-academic records, get addresses from internal records
 *
-IF STUDENT.ACAD-TYPE NE 'A'
+IF STUDENT.ACAD-TYPE           NE 'A'
 *
   FOR #K FROM 1 TO 20
 *
@@ -1092,7 +1092,7 @@ IF STUDENT.ACAD-TYPE NE 'A'
       CALLNAT 'UTN$ELKP' #UTDPELKP
 *              ========
 *
-      IF #UTDPELKP.RETURN-CODE NE ' '
+      IF #UTDPELKP.RETURN-CODE                NE ' '
         MOVE "NOT FOUND"                      TO #HOLD.ADDR-LAST-USERID-2
       ELSE
         MOVE #UTDPELKP.EID                    TO #HOLD.ADDR-LAST-USERID-2
@@ -1136,7 +1136,7 @@ IF STUDENT.ACAD-TYPE NE 'A'
 *
       COMPRESS STUDENT.ADDR-2(#K)    TO #HOLD.ALL-ADDR-2
 *
-      IF #K EQ #HOLD.ADDR-PREF
+      IF #K                          EQ #HOLD.ADDR-PREF
         MOVE 1                       TO #HOLD.DEFAULT-ADDR
         MOVE TRUE                    TO #HOLD.DEFAULT-ADDR-FOUND
       END-IF
@@ -1194,10 +1194,10 @@ END-IF
 *
 ** For academic records available through the Registrar's office:
 *
-IF STUDENT.ACAD-TYPE EQ 'A'
-AND #UTDP0002.RETURN-CODE EQ ' '
+IF STUDENT.ACAD-TYPE                    EQ 'A'
+AND #UTDP0002.RETURN-CODE               EQ ' '
 *
-  IF #UTDP0002.AREA-CITY NE ' '
+  IF #UTDP0002.AREA-CITY                NE ' '
     RESET #WKFL-3
 *
     MOVE RIGHT JUSTIFIED #UTDP0002.AREA-UPDATE-DATE
@@ -1210,9 +1210,9 @@ AND #UTDP0002.RETURN-CODE EQ ' '
     END-IF
 *
     IF  #HOLD.ADDR-LAST-UPDATE-A6-MM    LT '10'
-      MOVE '1' TO #HOLD.ADDR-LAST-UPDATE-A8-M1
+      MOVE '1'                          TO #HOLD.ADDR-LAST-UPDATE-A8-M1
       MOVE SUBSTRING(#HOLD.ADDR-LAST-UPDATE-A6-MM,2,1)
-                                       TO #HOLD.ADDR-LAST-UPDATE-A8-M2
+                                        TO #HOLD.ADDR-LAST-UPDATE-A8-M2
     ELSE
       MOVE #HOLD.ADDR-LAST-UPDATE-A6-MM TO  #HOLD.ADDR-LAST-UPDATE-A6-MM
     END-IF
@@ -1220,7 +1220,7 @@ AND #UTDP0002.RETURN-CODE EQ ' '
     MOVE #HOLD.ADDR-LAST-UPDATE-A6-YY  TO #HOLD.ADDR-LAST-UPDATE-A8-YY
     MOVE #HOLD.ADDR-LAST-UPDATE-A6-DD  TO #HOLD.ADDR-LAST-UPDATE-A8-DD
 *
-    IF #HOLD.DEFAULT-ADDR-FOUND NE TRUE
+    IF #HOLD.DEFAULT-ADDR-FOUND         NE TRUE
       ADD 1 TO #HOLD.DEFAULT-ADDR
     END-IF
 *
@@ -1245,26 +1245,26 @@ AND #UTDP0002.RETURN-CODE EQ ' '
     WRITE WORK FILE 3 VARIABLE #WKFL-3
   END-IF
 *
-  IF #UTDP0002.PERM-CITY NE ' '
+  IF #UTDP0002.PERM-CITY                NE ' '
     RESET #WKFL-3
     MOVE RIGHT JUSTIFIED #UTDP0002.PERM-UPDATE-DATE
                                         TO #HOLD.ADDR-LAST-UPDATE-A6
-    IF #HOLD.ADDR-LAST-UPDATE-A6-YY    LT '40'
-      MOVE '20' TO #HOLD.ADDR-LAST-UPDATE-A8-CC
+** Estimating century
+*                                        
+    IF #HOLD.ADDR-LAST-UPDATE-A6-YY     LT '40'
+      MOVE '20'                         TO #HOLD.ADDR-LAST-UPDATE-A8-CC
     ELSE
-      MOVE '19' TO #HOLD.ADDR-LAST-UPDATE-A8-CC
+      MOVE '19'                         TO #HOLD.ADDR-LAST-UPDATE-A8-CC
     END-IF
-    IF #HOLD.ADDR-LAST-UPDATE-A6-MM    LT '10'
-      MOVE '1' TO #HOLD.ADDR-LAST-UPDATE-A8-M1
+    IF #HOLD.ADDR-LAST-UPDATE-A6-MM     LT '10'
+      MOVE '1'                          TO #HOLD.ADDR-LAST-UPDATE-A8-M1
       MOVE SUBSTRING(#HOLD.ADDR-LAST-UPDATE-A6-MM,2,1)
-                                TO #HOLD.ADDR-LAST-UPDATE-A8-M2
+                                        TO #HOLD.ADDR-LAST-UPDATE-A8-M2
     ELSE
-     MOVE #HOLD.ADDR-LAST-UPDATE-A6-MM TO  #HOLD.ADDR-LAST-UPDATE-A6-MM
+     MOVE #HOLD.ADDR-LAST-UPDATE-A6-MM  TO #HOLD.ADDR-LAST-UPDATE-A6-MM
     END-IF
-    MOVE #HOLD.ADDR-LAST-UPDATE-A6-YY TO
-                                 #HOLD.ADDR-LAST-UPDATE-A8-YY
-    MOVE #HOLD.ADDR-LAST-UPDATE-A6-DD TO
-                                 #HOLD.ADDR-LAST-UPDATE-A8-DD
+    MOVE #HOLD.ADDR-LAST-UPDATE-A6-YY   TO #HOLD.ADDR-LAST-UPDATE-A8-YY
+    MOVE #HOLD.ADDR-LAST-UPDATE-A6-DD   TO #HOLD.ADDR-LAST-UPDATE-A8-DD
     COMPRESS #QUOTE #HOLD.UNIQUE-ID
                     #UE
                     "P"                            #QUOTE #TAB
@@ -1329,7 +1329,7 @@ MOVE STUDENT.UIN TO #UTDPBARS.IN-UIN
 CALLNAT 'UTNPBARS' #UTDPBARS
 *        ========
 *
-IF #UTDPBARS.RETURN-CODE NE ' '
+IF #UTDPBARS.RETURN-CODE       NE ' '
   ESCAPE ROUTINE
 END-IF
 *
@@ -1352,8 +1352,8 @@ END-IF
 ** Academic dismissals from other departments, 
 *
 FOR #L FROM 1 TO 32
-  IF #UTDPBARS.DISMISSAL-TYPE(#L) NE ' '
-  AND #UTDPBARS.DISMISSAL-WE-CARE(#L) NE ' '
+  IF #UTDPBARS.DISMISSAL-TYPE(#L)          NE ' '
+  AND #UTDPBARS.DISMISSAL-WE-CARE(#L)      NE ' '
 *
     RESET #HOLD.DISMISSAL
           #HOLD.DISMISSAL-COLLEGE
@@ -1362,7 +1362,7 @@ FOR #L FROM 1 TO 32
           #HOLD.DISMISSAL-WE-CARE
           #WKFL-5
 *
-    IF #UTDPBARS.DISMISSAL-COLLEGE(#L) NE ' '
+    IF #UTDPBARS.DISMISSAL-COLLEGE(#L)     NE ' '
       COMPRESS 'College: ' #UTDPBARS.DISMISSAL-COLLEGE(#L)
                                    INTO #HOLD.DISMISSAL-COLLEGE
     END-IF
@@ -1372,12 +1372,12 @@ FOR #L FROM 1 TO 32
                                    INTO #HOLD.DISMISSAL-START-CCYYS
     END-IF
 *
-    IF #UTDPBARS.DISMISSAL-END-CCYYS(#L) NE ' '
+    IF #UTDPBARS.DISMISSAL-END-CCYYS(#L)   NE ' '
       COMPRESS 'End: ' #UTDPBARS.DISMISSAL-END-CCYYS(#L)
                                    INTO #HOLD.DISMISSAL-END-CCYYS
     END-IF
 *
-    IF #UTDPBARS.DISMISSAL-WE-CARE(#L) NE ' '
+    IF #UTDPBARS.DISMISSAL-WE-CARE(#L)     NE ' '
       COMPRESS 'Important to UEX: ' #UTDPBARS.DISMISSAL-WE-CARE(#L)
                                    INTO #HOLD.DISMISSAL-WE-CARE
     END-IF
@@ -1403,7 +1403,7 @@ FOR #L FROM 1 TO 32
 END-FOR
 *
 FOR #L FROM 1 TO 15
-  IF #UTDPBARS.BAR-TYPE(#L) EQ ' '
+  IF #UTDPBARS.BAR-TYPE(#L)             EQ ' '
     ESCAPE TOP
   END-IF
 *
@@ -1415,7 +1415,7 @@ FOR #L FROM 1 TO 15
 *
 ** Human-readable information about last updates. 
 *
-  IF #UTDPBARS.BAR-ADDED-USER(#L) NE ' '
+  IF #UTDPBARS.BAR-ADDED-USER(#L)        NE ' '
     RESET #UTDPELKP
 *
     MOVE #UTDPBARS.BAR-ADDED-USER(#L)    TO #UTDPELKP.IN-PERM-EID
@@ -1423,7 +1423,7 @@ FOR #L FROM 1 TO 15
     CALLNAT 'UTN$ELKP' #UTDPELKP
 *            ========
 *
-    IF #UTDPELKP.RETURN-CODE NE ' '
+    IF #UTDPELKP.RETURN-CODE             NE ' '
       RESET #UTDPELKP
 *
       MOVE #UTDPBARS.BAR-ADDED-USER(#L)  TO #UTDPELKP.IN-UIN
@@ -1431,7 +1431,7 @@ FOR #L FROM 1 TO 15
       CALLNAT 'UTN$ELKP' #UTDPELKP
 *              ========
 *
-      IF #UTDPELKP.RETURN-CODE NE ' '
+      IF #UTDPELKP.RETURN-CODE           NE ' '
         MOVE #UTDPELKP.EID               TO #HOLD.BAR-ADDED-USERID
         MOVE #UTDPELKP.DISPLAY-NAME      TO #HOLD.BAR-ADDED-NAME
       END-IF
@@ -1445,7 +1445,7 @@ FOR #L FROM 1 TO 15
 *
 ** If a bar was waived, move human-readable information about who waived it, 
 *
-  IF #UTDPBARS.BAR-WAIVED-USER(#L) NE ' '
+  IF #UTDPBARS.BAR-WAIVED-USER(#L)      NE ' '
     RESET #UTDPELKP
 *
     MOVE #UTDPBARS.BAR-WAIVED-USER(#L)  TO #UTDPELKP.IN-PERM-EID
@@ -1453,14 +1453,14 @@ FOR #L FROM 1 TO 15
     CALLNAT 'UTN$ELKP' #UTDPELKP
 *            ========
 *
-    IF #UTDPELKP.RETURN-CODE NE ' '
+    IF #UTDPELKP.RETURN-CODE            NE ' '
      RESET #UTDPELKP
 *
      MOVE #UTDPBARS.BAR-WAIVED-USER(#L) TO #UTDPELKP.IN-UIN
 *
      CALLNAT 'UTN$ELKP' #UTDPELKP
 *             ========
-      IF #UTDPELKP.RETURN-CODE NE ' '
+      IF #UTDPELKP.RETURN-CODE          NE ' '
         MOVE #UTDPELKP.EID              TO #HOLD.BAR-WAIVED-USERID
         MOVE #UTDPELKP.DISPLAY-NAME     TO #HOLD.BAR-WAIVED-NAME
       END-IF
@@ -1509,24 +1509,25 @@ COMPRESS STUDENT.SID
 ** Compress all comments related to this particular record. 
 *        
 READ TEXT-ONLINE BY SID-REC-TYP-UNIT-SEQ STARTING FROM #SK-TEXT-ONLINE
-  IF TEXT-ONLINE.SID NE STUDENT.SID
-  OR TEXT-ONLINE.REC-TYPE NE 'SN'
-  OR TEXT-ONLINE.UNIT-CODE NE STUDENT.PROG-DEPT(#I)
+*
+  IF TEXT-ONLINE.SID                NE STUDENT.SID
+  OR TEXT-ONLINE.REC-TYPE           NE 'SN'
+  OR TEXT-ONLINE.UNIT-CODE          NE STUDENT.PROG-DEPT(#I)
     ESCAPE BOTTOM
   END-IF
 *
   RESET #HOLD.CETO-COMMENTS
   FOR #M FROM 1 TO 36
-    IF TEXT-ONLINE.DATA(#M) NE ' '
+    IF TEXT-ONLINE.DATA(#M)         NE ' '
       COMPRESS #HOLD.CETO-COMMENTS
                TEXT-ONLINE.DATA(#M) TO #HOLD.CETO-COMMENTS
     END-IF
   END-FOR
 *
-  IF #HOLD.CETO-COMMENTS NE ' '
+  IF #HOLD.CETO-COMMENTS            NE ' '
     COMPRESS #HOLD.COMMENTS
              #HOLD.CETO-COMMENTS
-                              INTO #HOLD.COMMENTS
+                                  INTO #HOLD.COMMENTS
 *
   END-IF
 END-READ
@@ -1538,19 +1539,19 @@ DEFINE SUBROUTINE PERFORM-FINAL-DATA-TRANSLATIONS
 *
 ** Translate gender codes based on the record's origin. 
 *
-IF #UTDP0002.SEX EQ 'F'
-  MOVE #FEMALE TO #HOLD.GENDER
+IF #UTDP0002.SEX            EQ 'F'
+  MOVE #FEMALE              TO #HOLD.GENDER
 ELSE
-  IF STUDENT.GENDER EQ 'F'
-    MOVE #FEMALE TO #HOLD.GENDER
+  IF STUDENT.GENDER         EQ 'F'
+    MOVE #FEMALE            TO #HOLD.GENDER
   END-IF
 END-IF
 *
-IF #UTDP0002.SEX EQ 'M'
-  MOVE #MALE TO #HOLD.GENDER
+IF #UTDP0002.SEX            EQ 'M'
+  MOVE #MALE                TO #HOLD.GENDER
 ELSE
-  IF STUDENT.GENDER EQ 'M'
-    MOVE #MALE TO #HOLD.GENDER
+  IF STUDENT.GENDER         EQ 'M'
+    MOVE #MALE              TO #HOLD.GENDER
   END-IF
 END-IF
 *
@@ -1565,19 +1566,19 @@ EXAMINE #HOLD.COMMENTS FOR '"' REPLACE WITH "'"
 *
 ** Translate codes to line up with expected Salesforce value. 
 *
-IF STUDENT.ROLE(#I) EQ ' '
+IF STUDENT.ROLE(#I)              EQ ' '
   MOVE 'Student'                 TO #HOLD.ROLE
 END-IF
 *
-IF STUDENT.ROLE(#I) EQ 'C'
+IF STUDENT.ROLE(#I)              EQ 'C'
   MOVE 'Contact/Coordinator'     TO #HOLD.ROLE
 END-IF
 *
-IF STUDENT.ROLE(#I) EQ 'I'
+IF STUDENT.ROLE(#I)              EQ 'I'
   MOVE 'Instructor'              TO #HOLD.ROLE
 END-IF
 *
-IF #HOLD.PROG-DEPT EQ 'CG'
+IF #HOLD.PROG-DEPT               EQ 'CG'
    MOVE 'Business Organization'  TO #HOLD.RECORD-TYPE
 ELSE
    MOVE 'Core'                   TO #HOLD.RECORD-TYPE
@@ -1635,12 +1636,12 @@ IF STUDENT.REC-TYPE EQ 'I'
 *
 END-IF
 *
-IF STUDENT.REC-TYPE EQ 'C'
-AND STUDENT.NAME-UPPERCASE NE ' '
+IF STUDENT.REC-TYPE                       EQ 'C'
+AND STUDENT.NAME-UPPERCASE                NE ' '
 *
-  IF #HAS-PD EQ TRUE
-  AND #HAS-CG EQ TRUE
-    MOVE #HOLD.ACAD-TYPE-SID TO #HOLD.MASTER-UNIQUE-ID
+  IF #HAS-PD                              EQ TRUE
+  AND #HAS-CG                             EQ TRUE
+    MOVE #HOLD.ACAD-TYPE-SID              TO #HOLD.MASTER-UNIQUE-ID
   END-IF
 *  
   COMPRESS  STUDENT.LAST-NAME-MIXED
