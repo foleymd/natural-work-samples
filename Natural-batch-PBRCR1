@@ -1,6 +1,6 @@
 **& Returns course relationships updated within given date range
 **%*********************************************************************
-**%       SOFTWARE (C) 2014 THE UNIVERSITY OF TEXAS AT AUSTIN.         *
+**%            SOFTWARE (C) THE UNIVERSITY OF TEXAS AT AUSTIN.         *
 **%                       ALL RIGHTS RESERVED.                         *
 **%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
 **%*********************************************************************
@@ -9,7 +9,6 @@
 **%
 **%       OBJECT NAME: UTPBRCR1
 **%            AUTHOR: Marjorie Foley
-**%      DATE WRITTEN: April 2014
 **%        FILES READ: None
 **%     FILES UPDATED: None
 **%  PURPOSE/COMMENTS: Returns replacement, duplicate, and inventory
@@ -177,7 +176,7 @@ PERFORM EOJ-ROUTINE          /* No errors returned
 WRITE(1) TITLE LEFT JUSTIFIED
   *INIT-USER         15T '      The University of Texas at Austin'
   70T *DATU
-  / *LIBRARY-ID      15T '          Office of the Registrar'
+  / *LIBRARY-ID      15T '          Office of the ---------'
   70T *TIMX (EM=HH:II:SS)
   / *PROGRAM '(1)'   15T '               Analysis Page'
   65T 'PAGE:' *PAGE-NUMBER(1)
