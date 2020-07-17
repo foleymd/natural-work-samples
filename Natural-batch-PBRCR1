@@ -1,0 +1,562 @@
+**& Returns course relationships updated within given date range
+**%*********************************************************************
+**%       SOFTWARE (C) 2014 THE UNIVERSITY OF TEXAS AT AUSTIN.         *
+**%                       ALL RIGHTS RESERVED.                         *
+**%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
+**%*********************************************************************
+**%             R E M A R K S    S E C T I O N
+**%---------------------------------------------------------------------
+**%
+**%       OBJECT NAME: UTPBRCR1
+**%            AUTHOR: Marjorie Foley
+**%      DATE WRITTEN: April 2014
+**%        FILES READ: None
+**%     FILES UPDATED: None
+**%  PURPOSE/COMMENTS: Returns replacement, duplicate, and inventory
+**%                    same as course relationships updated within a
+**%                    given date range.
+**%
+**%          REVISION: (AUTHOR/DATE/COMMENT)
+**%
+**%------------------------------------------------------------------- *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+DEFINE DATA
+*
+LOCAL USING UTDP1000        /* gets current CCYYS
+LOCAL USING UTDACOR1        /* AIM for UT-COURSE-RELATIONS
+LOCAL USING UTDAAUR1        /* AIM for UT-ACADEMIC-UNIT-RELATIONS
+LOCAL USING UTDACIR1        /* Gets most course titles
+LOCAL USING UTDPTOP1        /* Gets title for unnumbered topics
+LOCAL USING UTVP1371        /* UT-COORDINATING-BOARD-PROD = FILE137
+*
+LOCAL USING USR2001A        /* #USR2001A - Gets NA Error Info
+LOCAL USING UTDPML01        /* #MRDPML01 - Send error email
+LOCAL USING TXDLDBAS        /* Determines #DATABASE-VERSION
+*
+LOCAL
+*
+1 #CONTROL-CARD             (A78)
+1 REDEFINE #CONTROL-CARD
+  2 #CC-LO-MMDDYYYY         (A8)
+  2 #CC-HI-MMDDYYYY         (A8)
+*
+1 #WKFL                     (A200)
+*
+1 #SK-137                   (A8)
+1 REDEFINE #SK-137
+  2 DEPT                    (A3)
+  2 COURSE-NUMBER           (A5)
+*
+1 #LAST-UPDATE-MMDDYYYY     (A8)
+1 #DISPLAY-MMDDYYYY         (A10) /* displayed as MM/DD/YYYY
+1 #LAST-UPDATE-D            (D)
+1 #CC-LO-D                  (D)
+1 #CC-HI-D                  (D)
+*
+1 #ASSOCIATED-COLLEGES      (A1/1:20)
+1 #NBR-ASSOCIATED-COLLEGES  (N2)
+*
+1 #MAX-COURSES-RETURNED     (N2) CONST <20> /* = size of array
+                                            /* returned from UTDACOR1
+*
+1 #COURSE-TITLE             (A30)
+1 #TOPIC-NBR-N              (N3)
+1 #TOPIC-PLUS-1             (N4)
+*
+1 #COURSE-COUNTER           (I2)
+1 #IX                       (I2)
+1 #JX                       (I2)
+1 #KX                       (I2)
+1 #LX                       (I2)
+1 #MX                       (I2)
+*
+1 #RECS-READ                (N7)
+1 #RECS-REJECTED            (N7)
+1 #RECS-ACCEPTED            (N7)
+1 #RECS-WRITTEN             (N7)
+1 #HEADER-RECS-WRITTEN      (N7)
+1 #COURSE-RECS-WRITTEN      (N7)
+*
+1 #BAD-MASK-REJECTED        (N7)
+1 #OUTSIDE-RANGE-REJECTED   (N7)
+*
+1 #TAB                      (A5) CONST <H'05'>
+*
+1 #DEBUG-STRING             (A240)
+*
+END-DEFINE
+************************************************************************
+*
+* -------------------------------------------------------------------- *
+*               F O R M A T   K E Y   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+FORMAT (0) PS=77  LS=80           /* DO NOT USE FOR REAL REPORTS!
+**                                /* only (0) may be used when testing
+**                                /* online through 3270
+FORMAT (1) PS=77  LS=80           /* analysis page
+*
+* ----------------------------------------------------------------------
+*                 O N - E R R O R   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+ON ERROR
+  INCLUDE  UTCPERR2
+*
+  COMPRESS #DEBUG-STRING 'NAT' *ERROR-UT
+           'ERR IN' *PROGRAM ',' INTO #DEBUG-STRING
+*
+  PERFORM SEND-EMAIL
+*         ==========
+*
+END-ERROR
+*
+* ******************************************************************** *
+*                M A I N   L O G I C   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+COMPRESS #DATABASE-VERSION *PROGRAM 'MAIN,' INTO #DEBUG-STRING
+*
+INPUT #CONTROL-CARD
+*
+PERFORM AUDIT-CONTROL-CARD
+*       ==================
+*
+PERFORM GET-CURRENT-CCYYS
+*       =================
+*
+RESET #UTDACOR1
+*
+MOVE TRUE                     TO #UTDACOR1.IN-SK-UT-REL-REC-NBR
+MOVE 0                        TO #UTDACOR1.IN-LO-UT-REL-REC-NBR
+MOVE 9999999                  TO #UTDACOR1.IN-HI-UT-REL-REC-NBR
+MOVE 40                       TO #UTDACOR1.IN-NBR-RECS-TO-RETURN
+*
+REPEAT-MAIN.
+REPEAT
+*
+  RESET #UTDACOR1.OUT-DATA
+*
+  CALLNAT 'UTA$COR1' #UTDACOR1
+*          ========
+*
+  IF #UTDACOR1.RETURN-CODE NE ' '
+    WRITE (1) 'UTA$COR1 error; could not retrieve records.'
+            / #UTDACOR1.RETURN-CODE #UTDACOR1.RETURN-MSG (AL=72)
+    MOVE 1984                 TO *ERROR-UT
+  END-IF
+*
+  IF #UTDACOR1.OUT-NBR-RECS-RETURNED LE 0
+    ESCAPE BOTTOM (REPEAT-MAIN.)
+  END-IF
+*
+* #UTDACOR1.OUT fields used as hold fields
+*
+  PERFORM ACCEPT-OR-REJECT-RECORDS
+*         ========================
+*
+  IF #UTDACOR1.OUT-NXT-ISN LE 0
+  AND #UTDACOR1.OUT-NXT-UT-REL-REC-NBR LE 0
+    ESCAPE BOTTOM(REPEAT-MAIN.)
+  END-IF
+*
+  MOVE #UTDACOR1.OUT-NXT-UT-REL-REC-NBR
+                                    TO #UTDACOR1.IN-LO-UT-REL-REC-NBR
+*
+END-REPEAT                   /* REPEAT-MAIN.
+*
+PERFORM EOJ-ROUTINE          /* No errors returned
+*       ===========
+*
+* ******************************************************************** *
+*               W R I T E   T I T L E   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+WRITE(1) TITLE LEFT JUSTIFIED
+  *INIT-USER         15T '      The University of Texas at Austin'
+  70T *DATU
+  / *LIBRARY-ID      15T '          Office of the Registrar'
+  70T *TIMX (EM=HH:II:SS)
+  / *PROGRAM '(1)'   15T '               Analysis Page'
+  65T 'PAGE:' *PAGE-NUMBER(1)
+  / 'Database Version:' #DATABASE-VERSION
+  / 'Control Card:' #CONTROL-CARD //
+* *
+* -------------------------------------------------------------------- *
+*      I N T E R N A L   S U B R O U T I N E   S E C T I O N
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE       AUDIT-CONTROL-CARD
+* -------------------------------------------------------------------- *
+*
+COMPRESS *LINE #DEBUG-STRING INTO #DEBUG-STRING
+*
+IF #CC-LO-MMDDYYYY NE MASK (MMDDYYYY)
+   WRITE (1) 'Invalid year for #CC-LO-MMDDYYYY on control card.'
+       / 'The value sent was: ' #CC-LO-MMDDYYYY
+   MOVE 1984                        TO *ERROR-UT
+END-IF
+*
+IF #CC-HI-MMDDYYYY NE MASK (MMDDYYYY)
+   WRITE (1) 'Invalid year for #CC-HI-MMDDYYYY on control card.'
+       / 'The value sent was: ' #CC-HI-MMDDYYYY
+   MOVE 1984                        TO *ERROR-UT
+END-IF
+*
+MOVE EDITED #CC-LO-MMDDYYYY         TO #CC-LO-D (EM=MMDDYYYY)
+MOVE EDITED #CC-HI-MMDDYYYY         TO #CC-HI-D (EM=MMDDYYYY)
+*
+IF #CC-LO-D GT #CC-HI-D
+  WRITE (1) 'Input #CC-LO-MMDDYYYY must be before #CC-HH-MMDDYYYY'
+          / 'Values were'
+          / '=' #CC-LO-MMDDYYYY
+          / '=' #CC-HI-MMDDYYYY
+  MOVE 1984                         TO *ERROR-UT
+END-IF
+*
+END-SUBROUTINE     /* AUDIT-CONTROL-CARD
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE       GET-CURRENT-CCYYS
+* -------------------------------------------------------------------- *
+*
+RESET #UTDP1000
+*
+CALLNAT 'UTN$1000' #UTDP1000          /* No errors returned.
+*        ========
+*
+* #UTDP1000.#CURRENT-CCYYS used as hold field
+*
+END-SUBROUTINE     /* GET-CURRENT-CCYYS
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE       ACCEPT-OR-REJECT-RECORDS
+* -------------------------------------------------------------------- *
+*
+COMPRESS *LINE #DEBUG-STRING INTO #DEBUG-STRING
+*
+FOR-ACCEPT-REJECT.
+*
+FOR #IX FROM 1 TO #UTDACOR1.OUT-NBR-RECS-RETURNED
+*
+  ADD 1 TO #RECS-READ
+*
+  MOVE EDITED #UTDACOR1.UT-REL-LAST-UPD-DT(#IX) (EM=MMDDYYYY)
+                                      TO #LAST-UPDATE-MMDDYYYY
+*
+* Below IF statement checks to make sure date is valid; if not, it
+* writes to an exception report. Many records on this file have invalid
+* values for UT-REL-LAST-UPD-DT.
+*
+  IF #LAST-UPDATE-MMDDYYYY EQ MASK (MMDDYYYY)
+    MOVE EDITED #LAST-UPDATE-MMDDYYYY TO #LAST-UPDATE-D (EM=MMDDYYYY)
+  ELSE
+    PERFORM WRITE-EXCEPTION           /* No errors returned
+*   =======================
+    ESCAPE TOP
+  END-IF
+*
+* Below rejects records that are before #CC-LO-MMDDYYYY or after
+* #CC-HI-MMDDYYYY. No exception report is written.
+*
+  IF #LAST-UPDATE-D LT #CC-LO-D
+  OR #LAST-UPDATE-D GT #CC-HI-D
+    ADD 1 TO #RECS-REJECTED
+    ADD 1 TO #OUTSIDE-RANGE-REJECTED
+    ESCAPE TOP
+  END-IF
+*
+  ADD 1 TO #RECS-ACCEPTED
+*
+  PERFORM GET-ASSOCIATED-COLLEGES     /* No errors returned
+*         =======================
+*
+  PERFORM GET-COURSE-COLLEGE-CODES    /* No errors returned
+*         ========================
+*
+END-FOR                               /* FOR-ACCEPT-REJECT.
+*
+END-SUBROUTINE                        /* ACCEPT-OR-REJECT-RECORDS
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE       GET-ASSOCIATED-COLLEGES
+* -------------------------------------------------------------------- *
+*
+* This FOR loop assembles all colleges associated with the
+* record number on UT-COURSE-RELATIONS so that each course, when written
+* to the work file, will include a record of each college associated
+* with that course.
+*
+RESET #ASSOCIATED-COLLEGES(*)
+RESET #NBR-ASSOCIATED-COLLEGES
+*
+FOR-GET-ASSOCIATED-COLLEGES.
+*
+FOR #JX EQ 1 TO #MAX-COURSES-RETURNED
+*
+  RESET #UTDAAUR1
+  MOVE TRUE                          TO #UTDAAUR1.IN-SK-CCYYS-FIELD-ABBR
+*
+  IF #UTDACOR1.UT-REL-DEPT(#IX,#JX) EQ ' '
+    ESCAPE TOP
+  ELSE
+*
+    MOVE #UTDP1000.#CURRENT-CCYYS    TO #UTDAAUR1.IN-LO-CCYYS
+    MOVE 99999                       TO #UTDAAUR1.IN-HI-CCYYS
+*
+    MOVE #UTDACOR1.UT-REL-DEPT(#IX,#JX)
+                                     TO #UTDAAUR1.IN-LO-FIELD-ABBR
+                                        #UTDAAUR1.IN-HI-FIELD-ABBR
+    MOVE 1                           TO #UTDAAUR1.IN-NBR-RECS-TO-RETURN
+*
+    CALLNAT 'UTA$AUR1' #UTDAAUR1
+*            ========
+*
+    IF #UTDAAUR1.RETURN-CODE NE ' '
+      WRITE (1) 'UTA$AUR1 error; could not retrieve records.'
+              / #UTDAAUR1.RETURN-CODE #UTDAAUR1.RETURN-MSG (AL=72)
+      MOVE 1984                      TO *ERROR-UT
+    END-IF
+*
+    RESET #KX
+    EXAMINE FULL #ASSOCIATED-COLLEGES(*)
+    FOR FULL #UTDAAUR1.COLLEGE-CODE(1)
+      GIVING INDEX IN #KX
+*      
+    IF #KX LE 0
+      EXAMINE FULL #ASSOCIATED-COLLEGES(*) FOR FULL ' '
+        GIVING INDEX IN #LX
+      MOVE #UTDAAUR1.COLLEGE-CODE(1) TO #ASSOCIATED-COLLEGES(#LX)
+      ADD 1 TO #NBR-ASSOCIATED-COLLEGES
+    END-IF
+*
+  END-IF
+*
+END-FOR            /* FOR-GET-ASSOCIATED-COLLEGES.
+*
+END-SUBROUTINE     /* GET-ASSOCIATED-COLLEGES
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE       GET-COURSE-COLLEGE-CODES
+* -------------------------------------------------------------------- *
+*
+COMPRESS *LINE #DEBUG-STRING INTO #DEBUG-STRING
+*
+* The below FOR loop writes a record on the work file for each course
+* within each course relationship with its associated college info and
+* title, effectively sorting the records by college.
+*
+FOR-COLLEGE-SORT.
+*
+FOR #MX FROM 1 TO #NBR-ASSOCIATED-COLLEGES
+*
+  FOR-COURSE-COLLEGE-CODES.
+*
+  FOR #JX EQ 1 TO #MAX-COURSES-RETURNED
+*
+    RESET #UTDAAUR1
+*
+    MOVE TRUE                        TO #UTDAAUR1.IN-SK-CCYYS-FIELD-ABBR
+*
+    IF #UTDACOR1.UT-REL-DEPT(#IX,#JX) EQ ' '
+      ESCAPE TOP
+    ELSE
+      MOVE #UTDP1000.#CURRENT-CCYYS  TO #UTDAAUR1.IN-LO-CCYYS
+      MOVE 99999                     TO #UTDAAUR1.IN-HI-CCYYS
+      MOVE #UTDACOR1.UT-REL-DEPT(#IX,#JX)
+                                     TO #UTDAAUR1.IN-LO-FIELD-ABBR
+                                        #UTDAAUR1.IN-HI-FIELD-ABBR
+      MOVE 1                         TO #UTDAAUR1.IN-NBR-RECS-TO-RETURN
+*
+      CALLNAT 'UTA$AUR1' #UTDAAUR1
+*              ========
+*
+      IF #UTDAAUR1.RETURN-CODE NE ' '
+        WRITE (1) 'UTA$AUR1 error; could not retrieve records.'
+                 / #UTDAAUR1.RETURN-CODE #UTDAAUR1.RETURN-MSG (AL=72)
+        MOVE 1984                    TO *ERROR-UT
+      END-IF
+*
+*      #UTDAAUR1.COLLEGE-CODE(1) used as hold field
+*
+    PERFORM GET-COURSE-TITLE         /* No errors returned
+*           ================
+*
+    PERFORM WRITE-WORK-FILE-ONCE     /* No errors returned
+*           ====================
+*
+    END-IF
+*
+  END-FOR                            /* FOR-COURSE-COLLEGE-CODES.
+*
+END-FOR                              /* FOR-COLLEGE-SORT.
+*
+END-SUBROUTINE                       /* GET-COURSE-COLLEGE-CODES
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE          GET-COURSE-TITLE
+* -------------------------------------------------------------------- *
+*
+COMPRESS *LINE #DEBUG-STRING INTO #DEBUG-STRING
+*
+RESET #COURSE-TITLE
+*
+MOVE #UTDACOR1.UT-REL-BEG-YYYYS(#IX,#JX) TO #UTDPTOP1-CYS
+MOVE #UTDACOR1.UT-REL-UNIQUE(#IX,#JX)    TO #UTDPTOP1-UNIQUE
+*
+CALLNAT 'UTN$TOP1' #UTDPTOP1
+*        ========
+*
+MOVE #UTDPTOP1-TOP-SECTION-TITLE         TO #COURSE-TITLE
+*
+* Get titles for courses that are not unnumbered topics.
+*
+IF #COURSE-TITLE EQ ' '
+*
+  RESET #UTDACIR1
+*
+  MOVE TRUE                   TO #UTDACIR1.IN-SK-CURRENT-COURSE-S1
+*
+  MOVE #UTDACOR1.UT-REL-DEPT(#IX,#JX)
+                              TO #UTDACIR1.IN-LO-DEPARTMENT-ABBREVIATION
+                                 #UTDACIR1.IN-HI-DEPARTMENT-ABBREVIATION
+  MOVE SUBSTRING(#UTDACOR1.UT-REL-COURSE-NBR(#IX,#JX),2,4)
+                              TO #UTDACIR1.IN-LO-COURSE-ID
+                                 #UTDACIR1.IN-HI-COURSE-ID
+  MOVE 0
+                              TO #UTDACIR1.IN-LO-COURSE-CREDIT
+  MOVE 9 TO                               #UTDACIR1.IN-HI-COURSE-CREDIT
+*
+  IF #UTDACOR1.UT-REL-TOPIC-NBR(#IX,#JX)IS (N3)
+    COMPUTE #TOPIC-NBR-N = VAL(#UTDACOR1.UT-REL-TOPIC-NBR(#IX,#JX))
+    COMPUTE #TOPIC-PLUS-1 = #TOPIC-NBR-N + 1
+  END-IF
+*
+  MOVE #TOPIC-NBR-N           TO #UTDACIR1.IN-LO-COURSE-TOPIC
+  MOVE #TOPIC-NBR-N           TO #UTDACIR1.IN-HI-COURSE-TOPIC
+*
+  MOVE 0                      TO #UTDACIR1.IN-LO-VERSION-CCYYS
+  MOVE 99999                  TO #UTDACIR1.IN-HI-VERSION-CCYYS
+*
+  MOVE 1                      TO #UTDACIR1.IN-NBR-RECS-TO-RETURN
+*
+  CALLNAT 'UTA$CIR1' #UTDACIR1
+*          ========
+*
+  IF #UTDACIR1.RETURN-CODE NE ' '
+  WRITE (1) 'UTDACIR1 error; could not retrieve records.'
+           / #UTDACIR1.RETURN-CODE #UTDACIR1.RETURN-MSG (AL=72)
+     MOVE 1984                 TO *ERROR-UT
+  END-IF
+*
+  MOVE #UTDACIR1.CS-TITLE(1) TO #COURSE-TITLE
+  IF #UTDACIR1.CS-TITLE(1) EQ ' '
+    MOVE #UTDACIR1.CAT-TITLE(1,1) TO #COURSE-TITLE
+  END-IF
+*
+END-IF
+*
+IF #COURSE-TITLE EQ ' '
+  MOVE #UTDACOR1.UT-REL-DEPT(#IX,#JX)       TO #SK-137.DEPT
+  MOVE #UTDACOR1.UT-REL-COURSE-NBR(#IX,#JX)
+                                            TO #SK-137.COURSE-NUMBER
+*
+  FIND FILE137 WITH SUPERS1 EQ #SK-137
+    IF FILE137.XIDA-TITLE NE ' '
+      MOVE FILE137.XIDA-TITLE               TO #COURSE-TITLE
+    ELSE
+      MOVE FILE137.CBM3-COURSE-DESCRIPTION  TO #COURSE-TITLE
+    END-IF
+  END-FIND
+*
+ PRINT #COURSE-TITLE
+END-IF
+*
+END-SUBROUTINE     /* GET-COURSE-TITLE
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE          WRITE-WORK-FILE-ONCE
+* -------------------------------------------------------------------- *
+*
+COMPRESS *LINE #DEBUG-STRING INTO #DEBUG-STRING
+*
+MOVE EDITED #UTDACOR1.UT-REL-LAST-UPD-DT(#IX) (EM=MM/DD/YYYY)
+                                         TO #DISPLAY-MMDDYYYY
+*
+COMPRESS
+  #ASSOCIATED-COLLEGES(#MX)                   #TAB
+  #UTDACOR1.UT-REL-TYPE(#IX)                  #TAB
+  #UTDACOR1.UT-REL-REC-NBR(#IX)               #TAB
+  #UTDACOR1.UT-REL-EFFECTIVE-YYYYS(#IX)       #TAB
+  #DISPLAY-MMDDYYYY                           #TAB
+  #UTDACOR1.UT-REL-LAST-UPD-ID(#IX)           #TAB
+  #UTDAAUR1.COLLEGE-CODE(1)                   #TAB
+  #UTDACOR1.UT-REL-DEPT(#IX,#JX)  /* diplayed in one field with course #
+  #UTDACOR1.UT-REL-COURSE-NBR(#IX,#JX)        #TAB
+  #UTDACOR1.UT-REL-TOPIC-NBR(#IX,#JX)         #TAB
+  #UTDACOR1.UT-REL-UNIQUE(#IX,#JX)            #TAB
+  #UTDACOR1.UT-REL-BEG-YYYYS(#IX,#JX)         #TAB
+  #UTDACOR1.UT-REL-END-YYYYS(#IX,#JX)         #TAB
+  #COURSE-TITLE                               #TAB
+  #UTDACOR1.UT-REL-REPLACE-STATUS(#IX,#JX)    #TAB
+  #UTDACOR1.UT-REL-REPLACE-PARTIAL (#IX,#JX)  #TAB
+INTO #WKFL LEAVING NO SPACE
+*
+WRITE WORK FILE 1 #WKFL
+*
+ADD 1 TO #RECS-WRITTEN
+ADD 1 TO #COURSE-RECS-WRITTEN
+*
+END-SUBROUTINE     /* WRITE-WORK-FILE-ONCE
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE      WRITE-EXCEPTION
+* -------------------------------------------------------------------- *
+ADD 1 TO #RECS-REJECTED
+ADD 1 TO #BAD-MASK-REJECTED
+*
+RESET #WKFL
+*
+COMPRESS
+  #UTDACOR1.UT-REL-REC-NBR(#IX)               #TAB
+  #UTDACOR1.UT-REL-TYPE(#IX)                  #TAB
+  #UTDACOR1.UT-REL-EFFECTIVE-YYYYS(#IX)       #TAB
+  #UTDACOR1.UT-REL-EXPIRE-YYYYS(#IX)          #TAB
+  #UTDACOR1.UT-REL-LAST-UPD-DT(#IX)           #TAB
+  #UTDACOR1.UT-REL-LAST-UPD-ID(#IX)           #TAB
+INTO #WKFL LEAVING NO SPACE
+*
+WRITE WORK FILE 2 #WKFL
+*
+END-SUBROUTINE     /* WRITE-EXCEPTION
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE       EOJ-ROUTINE
+* -------------------------------------------------------------------- *
+*
+WRITE(1)
+  //   'Records Read        :' #RECS-READ
+  /    'Records Rejected    :' #RECS-REJECTED
+  /    'Records Accepted    :' #RECS-ACCEPTED
+  /    'Records Written     :' #RECS-WRITTEN
+  /    'Header Recs Written :' #HEADER-RECS-WRITTEN
+  /    'Course Recs Written :' #COURSE-RECS-WRITTEN
+  /    'Bad Mask            :' #BAD-MASK-REJECTED
+  /    'Outside Range       :' #OUTSIDE-RANGE-REJECTED
+*
+IF #RECS-READ = #RECS-ACCEPTED + #RECS-REJECTED
+  WRITE(1) 'Recs read = recs accepted + recs rejected.'
+ELSE
+  WRITE(1) '*** WARNING ***'
+         / '*** Recs read does not = recs accepted + recs recjected ***'
+END-IF
+*
+END-SUBROUTINE     /* EOJ-ROUTINE
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE   SEND-EMAIL
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPML01
+*
+* MOVE 'CR'                         TO #UTDPML01.IN-FUNC-AREA
+MOVE #DEBUG-STRING                TO #UTDPML01.IN-DEBUG-STRING
+*
+CALLNAT 'UTN$ML01' #UTDPML01          /* No errors returned.
+*        ========
+*
+END-SUBROUTINE                        /* SEND-EMAIL
+* -------------------------------------------------------------------- *
+END
