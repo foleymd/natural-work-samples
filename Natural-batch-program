@@ -206,12 +206,12 @@ LOCAL
 *
 ** Work files
 *
-1 #WKFL-1              (A12000)  /* Contact
-1 #WKFL-2              (A5000)   /* Account
-1 #WKFL-3              (A2000)   /* Address
-1 #WKFL-4              (A100)    /* Affiliation
-1 #WKFL-5              (A2000)   /* Bars
-1 #WKFL-6              (A5000)   /* Master accounts
+1 #WKFL-1              (A12000)         /* Contact
+1 #WKFL-2              (A5000)          /* Account
+1 #WKFL-3              (A2000)          /* Address
+1 #WKFL-4              (A100)           /* Affiliation
+1 #WKFL-5              (A2000)          /* Bars
+1 #WKFL-6              (A5000)          /* Master accounts
 1 #WKFL-DYNAMIC        (A) DYNAMIC      /* for variable length
 *
 ** Race/ethnicity
@@ -225,7 +225,7 @@ LOCAL
 ** Genders
 *
 1 #FEMALE              (A6) CONST<'Female'>
-1 #MALE				   (A4) CONST<'Male'>
+1 #MALE				         (A4) CONST<'Male'>
 *
 ** Machine and human-readable department abbreviations
 *
@@ -738,7 +738,7 @@ DEFINE SUBROUTINE TRANSLATE-ETHNICITY
 ** values are the current values; ETHNIC values are historical values. 
 *
 FOR #J FROM 1 TO 6
-  IF #UTDP0002.ETHNIC-TYPE(#J)   EQ ' '
+  IF #UTDP0002.ETHNIC-TYPE(#J)    EQ ' '
     ESCAPE TOP
   END-IF 
 *
@@ -1443,7 +1443,7 @@ FOR #L FROM 1 TO 15
 *
   END-IF
 *
-** If a bar was waived, move human-readable information about who waived it, 
+** If a bar was waived, move human-readable information about who waived it. 
 *
   IF #UTDPBARS.BAR-WAIVED-USER(#L)      NE ' '
     RESET #UTDPELKP
