@@ -1,0 +1,313 @@
+**& Retroactive Withdrawal Report
+**%*********************************************************************
+**%       SOFTWARE (C) 2014 THE UNIVERSITY OF TEXAS AT AUSTIN.         *
+**%                       ALL RIGHTS RESERVED.                         *
+**%UNAUTHORIZED COPYING OR TRANSMISSION OF THIS SOFTWARE IS PROHIBITED.*
+**%*********************************************************************
+**%             R E M A R K S    S E C T I O N
+**%---------------------------------------------------------------------
+**%
+**%       OBJECT NAME: UTPBRWR1
+**%            AUTHOR: Marjorie Foley (UTMDF)
+**%      DATE WRITTEN: 09/22/2014
+**%        FILES READ: UT-CLASSES, UT-UPDATE-LOG, UT-STUDENTS-WHOLE-FILE
+**%     FILES UPDATED: None
+**%  PURPOSE/COMMENTS: Retroactive Withdrawal Report--create a report of
+**%                    of students withdrawn from a semester's classes
+**%                    after the class has ended
+**%
+**%          REVISION: (AUTHOR/DATE/COMMENT)
+**%
+**%------------------------------------------------------------------- *
+*          D A T A   D E F I N I T I O N   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+DEFINE DATA
+LOCAL USING UTDPSRUI     /* SRI to EID
+LOCAL USING UTDPCODE     /* school code to text
+*
+LOCAL USING TXDLDBAS     /* Database version
+LOCAL USING USR2001A     /* Gets NA error info
+LOCAL USING UTDPML01     /* central email for errors
+*
+LOCAL
+*
+1 FILE149 VIEW OF UT-CLASSES
+  2 SRI
+  2 CLAS-YYS
+  2 CLAS-SEM-STATUS              /* looking for a 'W'
+  2 CLAS-SCHOOL
+  2 CLAS-CLASSIFICATION
+  2 G-O-GPA
+*
+1 FILE58 VIEW OF UT-UPDATE-LOG
+  2 SRI
+  2 LOG-NAME
+  2 LOG-TRANSACTION-CODE
+  2 LOG-YYS(1)
+*
+1 FILE50 VIEW OF UT-STUDENTS-WHOLE-FILE
+  2 SRI
+  2 NAME
+*
+1 #HOLD
+  2 SRI                (N9)
+  2 GPA                (N1.4)
+*
+1 #WKFL                (A100)
+1 REDEFINE #WKFL
+  2 EID                (A8)
+  2 NAME               (A25)
+  2 CCYYS              (N5)
+  2 SCHOOL             (A1)
+  2 SCHOOL-TEXT        (A25)
+  2 CLASSIFICATION     (A1)
+  2 GPA-A              (A6)
+*
+1 #FILE149-CCYYS       (N5)
+1 REDEFINE #FILE149-CCYYS
+  2 CC                 (N2)
+  2 YYS                (N3)
+*
+1 #CTR
+  2 #B                 (I4)
+  2 #C                 (I4)
+  2 #E                 (I4)
+  2 #J                 (I4)
+  2 #L                 (I4)
+  2 #N                 (I4)
+  2 #S                 (I4)
+  2 #U                 (I4)
+  2 #2                 (I4)
+  2 #3                 (I4)
+  2 #4                 (I4)
+  2 #5                 (I4)
+  2 #6                 (I4)
+  2 #7                 (I4)
+  2 #8                 (I4)
+  2 #9                 (I4)
+  2 #ALL               (I4)
+  2 #FOUND             (I4)
+*
+1 #TAB                 (A5) CONST <H'05'>
+*
+1 #RETURN-CODE         (A4)
+1 #RETURN-MSG          (A75)
+1 #DEBUG-STRING        (A250)
+*
+END-DEFINE
+************************************************************************
+*
+* -------------------------------------------------------------------- *
+* *               F O R M A T   K E Y   S E C T I O N
+* * -------------------------------------------------------------------- *
+*
+FORMAT (1) PS=77  LS=80           /* analysis page
+*
+* ----------------------------------------------------------------------
+*                 O N - E R R O R   S E C T I O N
+* -------------------------------------------------------------------- *
+*
+ON ERROR
+  INCLUDE UTCPERR2
+*
+  COMPRESS #DEBUG-STRING 'NAT' *ERROR-UT 'ERR in' *PROGRAM ','
+    INTO #DEBUG-STRING
+*
+  PERFORM SEND-EMAIL
+*         ==========
+END-ERROR
+*
+* ******************************************************************** *
+*                M A I N   L O G I C   S E C T I O N
+* -------------------------------------------------------------------- *
+COMPRESS #DATABASE-VERSION *PROGRAM 'MAIN,' INTO #DEBUG-STRING
+*
+PERFORM WRITE-HEADER-RECORD
+*       ===================
+*
+RD-149.
+READ RECORDS IN FILE149 BY CLAS-YYS FROM 20129 TO 20146
+*
+  RESET #CTR.#FOUND
+  RESET #WKFL
+*
+  IF FILE149.CLAS-SEM-STATUS NE 'W'
+    ESCAPE TOP
+  END-IF
+*
+  FIND RECORDS IN FILE58 WITH SRI EQ FILE149.SRI
+  AND LOG-TRANSACTION-CODE EQ 'W'
+    MOVE FILE149.CLAS-YYS TO #FILE149-CCYYS
+    IF FILE58.LOG-YYS(1) EQ #FILE149-CCYYS.YYS
+      ADD 1 TO #CTR.#FOUND
+    END-IF
+  END-FIND
+*
+  IF #CTR.#FOUND EQ 0
+    ADD 1 TO #CTR.#ALL
+    MOVE FILE149.SRI                       TO #HOLD.SRI
+    MOVE FILE149.CLAS-YYS                  TO #WKFL.CCYYS
+    MOVE FILE149.CLAS-SCHOOL               TO #WKFL.SCHOOL
+    MOVE FILE149.CLAS-CLASSIFICATION       TO #WKFL.CLASSIFICATION
+*
+    MOVE FILE149.G-O-GPA                   TO #HOLD.GPA
+    MOVE EDITED #HOLD.GPA (EM=9.9999)      TO #WKFL.GPA-A
+*
+    PERFORM TRANSLATE-DATA-FOR-DISPLAY
+*           ==========================
+*
+    PERFORM ITERATE-COUNTERS
+*           ================
+*
+    PERFORM WRITE-WORK-FILE
+*           ===============
+*
+  END-IF
+END-READ
+*
+PRINT 'Retroactive Withdrawal Counts:'
+    / 'GRADUATE BUSINESS      :'   #CTR.#B
+    / 'COMMUNICATION          :'   #CTR.#C
+    / 'NATURAL SCIENCES       :'   #CTR.#E
+    / 'GEOSCIENCES            :'   #CTR.#J
+    / 'LIBERAL ARTS           :'   #CTR.#L
+    / 'NURSING                :'   #CTR.#N
+    / 'SOCIAL WORK            :'   #CTR.#S
+    / 'UNDERGRADUATE STUDIES  :'   #CTR.#U
+    / 'BUSINESS ADMINISTRATION:'   #CTR.#2
+    / 'EDUCATION              :'   #CTR.#3
+    / 'ENGINEERING            :'   #CTR.#4
+    / 'FINE ARTS              :'   #CTR.#5
+    / 'GRADUATE SCHOOL        :'   #CTR.#6
+    / 'LAW SCHOOL             :'   #CTR.#7
+    / 'PHARMACY               :'   #CTR.#8
+    / 'ARCHITECTURE           :'   #CTR.#9
+    / 'TOTAL                  :'   #CTR.#ALL
+*
+* ******************************************************************** *
+*                S U B R O U T I N E   S E C T I O N
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE   WRITE-HEADER-RECORD[-]
+* -------------------------------------------------------------------- *
+*
+COMPRESS
+  'EID'                    #TAB
+  'NAME'                   #TAB
+  'CCYYS'                  #TAB
+  'SCHOOL'                 #TAB
+  'SCHOOL-TEXT'            #TAB
+  'CLASSIFICATION'         #TAB
+  'GPA'                    #TAB
+                          INTO #WKFL LEAVING NO SPACE
+WRITE WORK FILE 1 #WKFL
+*
+END-SUBROUTINE   /* WRITE-HEADER-RECORD
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE   TRANSLATE-DATA-FOR-DISPLAY[-]
+* -------------------------------------------------------------------- *
+** First, get EID from SRI.
+*
+RESET #UTDPSRUI
+MOVE #HOLD.SRI TO #UTDPSRUI.IN-SRI-A9
+*
+CALLNAT 'UTN$SRUI' #UTDPSRUI
+*        ========
+IF #UTDPSRUI.OUT-ERROR-CODE NE ' '
+  PRINT #UTDPSRUI.OUT-ERROR-CODE #UTDPSRUI.OUT-ERROR-MSG
+END-IF
+*
+MOVE #UTDPSRUI.OUT-UT-EID             TO #WKFL.EID
+*
+** Next, get name.
+*
+FIND RECORDS IN FILE50 WITH SRI EQ #HOLD.SRI
+  MOVE FILE50.NAME TO #WKFL.NAME
+END-FIND
+*
+** Then, get the school name from the school code.
+*
+RESET #UTDPCODE
+MOVE 12                               TO #UTDPCODE.#SEND-TYPE-TABLE
+MOVE FILE149.CLAS-SCHOOL              TO #UTDPCODE.#SEND-CODE
+CALLNAT 'UTN$CODE' #UTDPCODE
+*        ========
+*
+MOVE #UTDPCODE.#RETURN-MEANING        TO #WKFL.SCHOOL-TEXT
+*
+END-SUBROUTINE   /* TRANSLATE-DATA-FOR-DISPLAY
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE   ITERATE-COUNTERS[-]
+* -------------------------------------------------------------------- *
+*
+DECIDE FOR FIRST CONDITION
+  WHEN FILE149.CLAS-SCHOOL EQ 'B'
+    ADD 1 TO #CTR.#B
+  WHEN FILE149.CLAS-SCHOOL EQ 'C'
+    ADD 1 TO #CTR.#C
+  WHEN FILE149.CLAS-SCHOOL EQ 'E'
+    ADD 1 TO #CTR.#E
+  WHEN FILE149.CLAS-SCHOOL EQ 'J'
+    ADD 1 TO #CTR.#J
+  WHEN FILE149.CLAS-SCHOOL EQ 'L'
+    ADD 1 TO #CTR.#L
+  WHEN FILE149.CLAS-SCHOOL EQ 'N'
+    ADD 1 TO #CTR.#N
+  WHEN FILE149.CLAS-SCHOOL EQ 'S'
+    ADD 1 TO #CTR.#S
+  WHEN FILE149.CLAS-SCHOOL EQ 'U'
+    ADD 1 TO #CTR.#U
+  WHEN FILE149.CLAS-SCHOOL EQ '2'
+    ADD 1 TO #CTR.#2
+  WHEN FILE149.CLAS-SCHOOL EQ '3'
+    ADD 1 TO #CTR.#3
+  WHEN FILE149.CLAS-SCHOOL EQ '4'
+    ADD 1 TO #CTR.#4
+  WHEN FILE149.CLAS-SCHOOL EQ '5'
+    ADD 1 TO #CTR.#5
+  WHEN FILE149.CLAS-SCHOOL EQ '6'
+    ADD 1 TO #CTR.#6
+  WHEN FILE149.CLAS-SCHOOL EQ '7'
+    ADD 1 TO #CTR.#7
+  WHEN FILE149.CLAS-SCHOOL EQ '8'
+    ADD 1 TO #CTR.#8
+  WHEN FILE149.CLAS-SCHOOL EQ '9'
+    ADD 1 TO #CTR.#9
+  WHEN NONE
+    IGNORE
+END-DECIDE
+*
+END-SUBROUTINE   /* ITERATE-COUNTERS
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE   WRITE-WORK-FILE[-]
+* -------------------------------------------------------------------- *
+COMPRESS
+  #WKFL.EID                    #TAB
+  #WKFL.NAME                   #TAB
+  #WKFL.CCYYS                  #TAB
+  #WKFL.SCHOOL                 #TAB
+  #WKFL.SCHOOL-TEXT            #TAB
+  #WKFL.CLASSIFICATION         #TAB
+  #WKFL.GPA-A                  #TAB
+                          INTO #WKFL LEAVING NO SPACE
+*
+WRITE WORK FILE 1 #WKFL
+*
+END-SUBROUTINE     /* write-work-file
+* -------------------------------------------------------------------- *
+DEFINE SUBROUTINE   SEND-EMAIL[-]
+* -------------------------------------------------------------------- *
+*
+RESET #UTDPML01
+*
+MOVE #RETURN-CODE                 TO #UTDPML01.IN-ERROR-CODE
+MOVE #RETURN-MSG                  TO #UTDPML01.IN-ERROR-MSG
+MOVE #DEBUG-STRING                TO #UTDPML01.IN-DEBUG-STRING
+*
+CALLNAT 'UTN$ML01' #UTDPML01
+*        ========
+*
+END-SUBROUTINE   /* SEND-EMAIL
+* -------------------------------------------------------------------- *
+*
+END
